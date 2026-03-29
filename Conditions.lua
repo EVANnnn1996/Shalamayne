@@ -257,9 +257,14 @@ end
 -- Full usability check: cooldown + resource requirements.
 function Shalamayne_Conditions.CanUseSpell(spellName, now)
   if not Shalamayne_Conditions.IsSpellReady(spellName, now) then return false end
-  local usable, noResource = IsUsableSpell(spellName)
-  if noResource then return false end
-  return usable ~= nil and usable ~= 0
+  if IsSpellUsable then
+    local ok, usable, noResource = pcall(IsSpellUsable, spellName)
+    if ok then
+      if noResource then return false end
+      return usable ~= nil and usable ~= 0
+    end
+  end
+  return true
 end
 
 -- Returns an approximate enemy count for AoE decisions.
