@@ -286,7 +286,8 @@ function Shalamayne_Conditions.TargetHasDebuff(debuffName)
   if not Shalamayne_Conditions.TargetExists() then return false end
   local i = 1
   while true do
-    local name, _, _ = UnitDebuff("target", i)
+    local texture, stacks = UnitDebuff("target", i)
+    local name = texture
     if not name then break end
     
     -- In 1.12 UnitDebuff returns the texture path, we do a basic string match
@@ -310,4 +311,20 @@ function Shalamayne_Conditions.TargetHasDebuff(debuffName)
     i = i + 1
   end
   return false
+end
+
+-- Get Sunder Armor stacks on target (0..5).
+-- In 1.12 UnitDebuff returns texture and stack count; we match by texture.
+function Shalamayne_Conditions.TargetSunderArmorStacks()
+  if not Shalamayne_Conditions.TargetExists() then return 0 end
+  local i = 1
+  while true do
+    local texture, stacks = UnitDebuff("target", i)
+    if not texture then break end
+    if string.find(string.lower(texture), "ability_warrior_sunder") then
+      return tonumber(stacks) or 0
+    end
+    i = i + 1
+  end
+  return 0
 end

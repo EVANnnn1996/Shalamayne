@@ -85,27 +85,17 @@ local function CreateFrameOnce(L)
   aoeBox:SetPoint("TOPLEFT", f, "TOPLEFT", 150, -152)
   aoeBox:SetNumeric(true)
 
-  local opLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  opLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -178)
-  opLabel:SetText(L.UI_OP_WINDOW)
-  local opBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
-  opBox:SetAutoFocus(false)
-  opBox:SetWidth(40)
-  opBox:SetHeight(18)
-  opBox:SetPoint("TOPLEFT", f, "TOPLEFT", 150, -176)
-  opBox:SetNumeric(false)
-
   local sunderLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  sunderLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -202)
+  sunderLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -178)
   sunderLabel:SetText(L.UI_SUNDER_HP)
   local sunderBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
   sunderBox:SetAutoFocus(false)
   sunderBox:SetWidth(40)
   sunderBox:SetHeight(18)
-  sunderBox:SetPoint("TOPLEFT", f, "TOPLEFT", 150, -200)
+  sunderBox:SetPoint("TOPLEFT", f, "TOPLEFT", 150, -176)
   sunderBox:SetNumeric(true)
 
-  local btnApply = CreateButton(f, "Apply", 240, -200, 90)
+  local btnApply = CreateButton(f, "Apply", 240, -176, 90)
 
   -- Refresh UI elements to match current settings
   local function Refresh()
@@ -113,7 +103,6 @@ local function CreateFrameOnce(L)
     cbDebug:SetChecked(Shalamayne_Settings.debug and 1 or 0)
     hsBox:SetNumber(Shalamayne_Settings.heroicStrikeRage or 50)
     aoeBox:SetNumber(Shalamayne_Settings.aoeEnemies or 2)
-    opBox:SetText(tostring(Shalamayne_Settings.overpowerWindowSeconds or 4.0))
     sunderBox:SetNumber(Shalamayne_Settings.sunderArmorHp or 1000)
   end
 
@@ -133,7 +122,6 @@ local function CreateFrameOnce(L)
   btnApply:SetScript("OnClick", function()
     Shalamayne_Settings.heroicStrikeRage = tonumber(hsBox:GetText()) or 50
     Shalamayne_Settings.aoeEnemies = tonumber(aoeBox:GetText()) or 2
-    Shalamayne_Settings.overpowerWindowSeconds = tonumber(opBox:GetText()) or 4.0
     Shalamayne_Settings.sunderArmorHp = tonumber(sunderBox:GetText()) or 1000
     Refresh()
   end)

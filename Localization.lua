@@ -31,7 +31,6 @@ Shalamayne_Localization = {
     UI_SHOW_DEBUG = "Show debug",
     UI_HS_RAGE = "Heroic Strike rage >=",
     UI_AOE_ENEMIES = "AoE enemies >=",
-    UI_OP_WINDOW = "Overpower window (s)",
     UI_SUNDER_HP = "Sunder Armor HP >",
 
     SPELL_BATTLE_STANCE = "Battle Stance",
@@ -83,7 +82,6 @@ Shalamayne_Localization = {
     UI_SHOW_DEBUG = "显示调试",
     UI_HS_RAGE = "英勇打击怒气 >=",
     UI_AOE_ENEMIES = "AOE 敌人数量 >=",
-    UI_OP_WINDOW = "压制窗口（秒）",
     UI_SUNDER_HP = "破甲目标血量 >",
 
     SPELL_BATTLE_STANCE = "战斗姿态",

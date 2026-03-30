@@ -23,15 +23,7 @@ local function EnsureDefaults()
 
   if Shalamayne_Settings.heroicStrikeRage == nil then Shalamayne_Settings.heroicStrikeRage = 50 end
   if Shalamayne_Settings.aoeEnemies == nil then Shalamayne_Settings.aoeEnemies = 2 end
-  if Shalamayne_Settings.overpowerWindowSeconds == nil then Shalamayne_Settings.overpowerWindowSeconds = 4.0 end
   if Shalamayne_Settings.sunderArmorHp == nil then Shalamayne_Settings.sunderArmorHp = 1000 end
-
-  if Shalamayne_Settings.useMortalStrike == nil then Shalamayne_Settings.useMortalStrike = true end
-  if Shalamayne_Settings.useSweeping == nil then Shalamayne_Settings.useSweeping = true end
-  if Shalamayne_Settings.useWhirlwind == nil then Shalamayne_Settings.useWhirlwind = true end
-  if Shalamayne_Settings.useBloodthirst == nil then Shalamayne_Settings.useBloodthirst = true end
-  if Shalamayne_Settings.useBloodrage == nil then Shalamayne_Settings.useBloodrage = true end
-  if Shalamayne_Settings.useHeroicStrike == nil then Shalamayne_Settings.useHeroicStrike = true end
 end
 
 -- Compare version numbers
@@ -146,55 +138,11 @@ local function DecideAndAct(specOverride)
     PrintError(table.concat(Shalamayne.disabledErrors or { "disabled" }, " "))
     return
   end
-  if not Shalamayne_Settings.enabled then return end
-  if not Shalamayne_State.inCombat then return end
 
   local now = GetTime()
   local spec = specOverride or Shalamayne_Settings.spec
 
-  local action, reason
-  if spec == L.SPEC_FURY_KEY then
-    action, reason = Shalamayne_Rotation_Fury.Decide(L, now)
-  else
-    action, reason = Shalamayne_Rotation_Arms.Decide(L, now)
-  end
-
-  Shalamayne_State.lastDecisionAt = now
-  Shalamayne_State.lastDecision = reason
-
-  if Shalamayne_Settings.debug then
-    local stance = Shalamayne_Conditions.GetStance()
-    local rage = Shalamayne_Conditions.PlayerRage()
-    local hpPct = Shalamayne_Conditions.TargetExists() and Shalamayne_Conditions.TargetHealthPct() or 0
-    local dist = Shalamayne_Conditions.DistanceToTarget() or 0
-    local opRem = 0
-    if Shalamayne_Conditions.HasOverpowerWindow(now) then
-      opRem = Shalamayne_State.overpowerUntil - now
-    end
-    local spellText = action and action.spell or "-"
-    Shalamayne_DebugUI.PushLine(string.format("%s | stance=%d rage=%d hp=%.1f%% dist=%.1f op=%.1fs -> %s (%s)",
-      SpecLabel(), stance, rage, hpPct, dist, opRem, spellText, reason or ""))
-  end
-
-  if not action then return end
-
-  if action.spell == L.SPELL_BATTLE_STANCE then
-    Shalamayne_Action.SwitchStance(1, L)
-    return
-  end
-  if action.spell == L.SPELL_BERSERKER_STANCE then
-    Shalamayne_Action.SwitchStance(3, L)
-    return
-  end
-  if action.stance and action.stance ~= 0 then
-    local stance = Shalamayne_Conditions.GetStance()
-    if stance ~= action.stance then
-      Shalamayne_Action.SwitchStance(action.stance, L)
-      return
-    end
-  end
-
-  Shalamayne_Action.CastSpell(action.spell)
+  Shalamayne_Action.Decide(L, now, spec)
 end
 
 SLASH_SHALAMAYNE1 = "/shala"
@@ -298,6 +246,7 @@ frame:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES")
 frame:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE")
 frame:RegisterEvent("CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES")
 frame:RegisterEvent("CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE")
+frame:RegisterEvent("CHAT_MSG_SPELL_SELF_DAMAGE")
 frame:RegisterEvent("BUFF_ADDED_SELF")
 frame:RegisterEvent("BUFF_REMOVED_SELF")
 
@@ -398,7 +347,7 @@ local function OnCombatLog(L, msg)
   if not patterns then return end
   for _, p in ipairs(patterns) do
     if string.find(msg, p) then
-      local window = Shalamayne_Settings.overpowerWindowSeconds or 4.0
+      local window = 4.0
       Shalamayne_State.overpowerUntil = GetTime() + window
       if Shalamayne_Settings.debug then
         Shalamayne_DebugUI.PushLine("Overpower proc: " .. msg)
@@ -455,6 +404,17 @@ frame:SetScript("OnEvent", function()
 
   if event == "PLAYER_REGEN_DISABLED" then
     Shalamayne_State.inCombat = true
+    Shalamayne_Spellbook.Scan()
+    Shalamayne_State.knownSpells = {}
+    Shalamayne_State.knownSpells[L.SPELL_OVERPOWER] = Shalamayne_Spellbook.GetSlot(L.SPELL_OVERPOWER) ~= nil
+    Shalamayne_State.knownSpells[L.SPELL_MORTAL_STRIKE] = Shalamayne_Spellbook.GetSlot(L.SPELL_MORTAL_STRIKE) ~= nil
+    Shalamayne_State.knownSpells[L.SPELL_SWEEPING_STRIKES] = Shalamayne_Spellbook.GetSlot(L.SPELL_SWEEPING_STRIKES) ~= nil
+    Shalamayne_State.knownSpells[L.SPELL_WHIRLWIND] = Shalamayne_Spellbook.GetSlot(L.SPELL_WHIRLWIND) ~= nil
+    Shalamayne_State.knownSpells[L.SPELL_BLOODRAGE] = Shalamayne_Spellbook.GetSlot(L.SPELL_BLOODRAGE) ~= nil
+    Shalamayne_State.knownSpells[L.SPELL_HEROIC_STRIKE] = Shalamayne_Spellbook.GetSlot(L.SPELL_HEROIC_STRIKE) ~= nil
+    Shalamayne_State.knownSpells[L.SPELL_EXECUTE] = Shalamayne_Spellbook.GetSlot(L.SPELL_EXECUTE) ~= nil
+    Shalamayne_State.knownSpells[L.SPELL_SUNDER_ARMOR] = Shalamayne_Spellbook.GetSlot(L.SPELL_SUNDER_ARMOR) ~= nil
+    Shalamayne_State.knownSpells[L.SPELL_BLOODTHIRST] = Shalamayne_Spellbook.GetSlot(L.SPELL_BLOODTHIRST) ~= nil
     if not Shalamayne_State.mainhandSwingTime or Shalamayne_State.mainhandSwingTime == 0 then
       Shalamayne_State.mainhandSwingTime = GetTime()
       Swing.UpdateDurations(false)
@@ -522,6 +482,28 @@ frame:SetScript("OnEvent", function()
   if event == "CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES" or event == "CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE" or event == "CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES" or event == "CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE" then
     if Swing.IsParryHasteMessage(arg1) then
       Swing.ApplyParryHaste()
+    end
+    return
+  end
+
+  if event == "CHAT_MSG_SPELL_SELF_DAMAGE" then
+    local msg = arg1 or ""
+    if string.find(msg, "你的破甲") or string.find(msg, "Your Sunder Armor") then
+      local guid = nil
+      local s, e = string.find(msg, "0x" .. string.rep("%x", 16))
+      if s then
+        guid = string.sub(msg, s, e)
+      else
+        _, guid = UnitExists("target")
+      end
+      if guid then
+        if string.find(msg, "招架") or string.find(msg, "躲闪") or string.find(msg, "格挡") or string.find(msg, "没有击中") or string.find(msg, "免疫") or string.find(msg, "抵抗") or string.find(msg, "parried") or string.find(msg, "dodged") or string.find(msg, "blocked") or string.find(msg, "miss") or string.find(msg, "immune") or string.find(msg, "resist") then
+        else
+          if Shalamayne_State.sunderOnceByGuid then
+            Shalamayne_State.sunderOnceByGuid[guid] = GetTime()
+          end
+        end
+      end
     end
     return
   end

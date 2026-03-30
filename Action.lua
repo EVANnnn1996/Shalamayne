@@ -1,8 +1,6 @@
 Shalamayne_State = {
   inCombat = false,
   overpowerUntil = 0,
-  lastDecision = nil,
-  lastDecisionAt = 0,
   lastCastSpell = nil,
   lastCastAt = 0,
   lastErrorAt = 0,
@@ -11,18 +9,20 @@ Shalamayne_State = {
   mainhandSwingDuration = 2.0,
   offhandSwingTime = 0,
   offhandSwingDuration = 2.0,
+  sunderOnceByGuid = {},
+  knownSpells = {},
 }
 
 -- Reset combat-related states when leaving combat
 function Shalamayne_State.ResetCombat()
   Shalamayne_State.overpowerUntil = 0
-  Shalamayne_State.lastDecision = nil
-  Shalamayne_State.lastDecisionAt = 0
   Shalamayne_State.lastCastSpell = nil
   Shalamayne_State.lastCastAt = 0
   Shalamayne_State.lastErrorAt = 0
   Shalamayne_State.mainhandSwingTime = 0
   Shalamayne_State.offhandSwingTime = 0
+  Shalamayne_State.sunderOnceByGuid = {}
+  Shalamayne_State.knownSpells = {}
 end
 
 Shalamayne_Action = {}
@@ -37,89 +37,52 @@ local function QueueOrCast(spellName)
   CastSpellByName(spellName)
 end
 
--- Ensure auto-attack is running (optional setting).
--- We intentionally keep this simple and only call AttackTarget when we have a valid hostile target.
-function Shalamayne_Action.EnsureAutoAttack()
-  if not Shalamayne_Conditions.TargetExists() then return end
-  AttackTarget()
-end
-
--- Switch stance during combat when required.
--- 1=Battle, 2=Defensive, 3=Berserker.
-function Shalamayne_Action.SwitchStance(requiredStance, L)
-  local stance = Shalamayne_Conditions.GetStance()
-  if stance == requiredStance then return false end
-  if requiredStance == 1 then
-    QueueOrCast(L.SPELL_BATTLE_STANCE)
-    return true
-  elseif requiredStance == 2 then
-    QueueOrCast(L.SPELL_DEFENSIVE_STANCE)
-    return true
-  elseif requiredStance == 3 then
-    QueueOrCast(L.SPELL_BERSERKER_STANCE)
-    return true
+local function DebugHit(reason, spellName, now)
+  if not (Shalamayne_Settings and Shalamayne_Settings.debug) then return end
+  if not (Shalamayne_DebugUI and Shalamayne_DebugUI.PushLine) then return end
+  local stanceNow = Shalamayne_Conditions.GetStance()
+  local rageNow = Shalamayne_Conditions.PlayerRage()
+  local hpPctNow = Shalamayne_Conditions.TargetExists() and Shalamayne_Conditions.TargetHealthPct() or 0
+  local hpAbsNow = Shalamayne_Conditions.TargetExists() and Shalamayne_Conditions.TargetHealth() or 0
+  local enemyCountNow = Shalamayne_Conditions.EnemiesInRange()
+  local opRem = 0
+  if now and Shalamayne_State.overpowerUntil and Shalamayne_State.overpowerUntil > now then
+    opRem = Shalamayne_State.overpowerUntil - now
   end
-  return false
+  local targetName = (UnitExists("target") and UnitName("target")) or "-"
+  local spellText = spellName or "-"
+  Shalamayne_DebugUI.PushLine(string.format("ARMS|%s|%s|stance=%d rage=%d hp=%d(%.1f%%) enemies=%d op=%.1fs target=%s",
+    reason or "-", spellText, stanceNow, rageNow, hpAbsNow, hpPctNow, enemyCountNow, opRem, targetName))
 end
 
--- Cast (or queue) the requested spell.
-function Shalamayne_Action.CastSpell(spellName)
-  QueueOrCast(spellName)
+local function DebugCheck(tag, ok, details)
+  if not (Shalamayne_Settings and Shalamayne_Settings.debug) then return end
+  if not (Shalamayne_DebugUI and Shalamayne_DebugUI.PushLine) then return end
+  local status = ok and "OK" or "NO"
+  local msg = "ARMS? " .. tag .. "=" .. status
+  if details and details ~= "" then
+    msg = msg .. " | " .. details
+  end
+  Shalamayne_DebugUI.PushLine(msg)
 end
 
 Shalamayne_Rotation_Arms = {}
+Shalamayne_Rotation_Fury = {}
 
--- Helper to format an action table
-local function SpellAction(spellName, requiredStance)
-  return { type = "spell", spell = spellName, stance = requiredStance }
+function Shalamayne_Action.Decide(L, now, spec)
+  now = now or GetTime()
+  spec = spec or (Shalamayne_Settings and Shalamayne_Settings.spec)
+  if spec == L.SPEC_FURY_KEY then
+    Shalamayne_Rotation_Fury.Decide(L, now)
+  else
+    Shalamayne_Rotation_Arms.Decide(L, now)
+  end
 end
 
 -- Arms (2H) rotation.
--- Returns an action table or nil, plus a short debug reason key.
--- Stance switching is allowed ONLY in combat.
+-- Decide performs the action directly (casts/switches stance) and returns nothing.
 function Shalamayne_Rotation_Arms.Decide(L, now)
   now = now or GetTime()
-  local function DebugHit(reason, spellName)
-    if not (Shalamayne_Settings and Shalamayne_Settings.debug) then return end
-    if not (Shalamayne_DebugUI and Shalamayne_DebugUI.PushLine) then return end
-    local stance = Shalamayne_Conditions.GetStance()
-    local rage = Shalamayne_Conditions.PlayerRage()
-    local hpPct = Shalamayne_Conditions.TargetExists() and Shalamayne_Conditions.TargetHealthPct() or 0
-    local hpAbs = Shalamayne_Conditions.TargetExists() and Shalamayne_Conditions.TargetHealth() or 0
-    local enemyCount = Shalamayne_Conditions.EnemiesInRange()
-    local opRem = 0
-    if Shalamayne_State.overpowerUntil and Shalamayne_State.overpowerUntil > now then
-      opRem = Shalamayne_State.overpowerUntil - now
-    end
-    local targetName = (UnitExists("target") and UnitName("target")) or "-"
-    local spellText = spellName or "-"
-    Shalamayne_DebugUI.PushLine(string.format("ARMS|%s|%s|stance=%d rage=%d hp=%d(%.1f%%) enemies=%d op=%.1fs target=%s",
-      reason or "-", spellText, stance, rage, hpAbs, hpPct, enemyCount, opRem, targetName))
-  end
-
-  local function DebugCheck(tag, ok, details)
-    if not (Shalamayne_Settings and Shalamayne_Settings.debug) then return end
-    if not (Shalamayne_DebugUI and Shalamayne_DebugUI.PushLine) then return end
-    local status = ok and "OK" or "NO"
-    local msg = "ARMS? " .. tag .. "=" .. status
-    if details and details ~= "" then
-      msg = msg .. " | " .. details
-    end
-    Shalamayne_DebugUI.PushLine(msg)
-  end
-
-  if not Shalamayne_State.inCombat then
-    DebugHit("not_in_combat")
-    return nil, "not_in_combat"
-  end
-
-  -- Auto-target a valid melee enemy if current target is invalid
-  if not Shalamayne_Conditions.TargetExists() then
-    if not Shalamayne_Conditions.AutoTargetMelee() then
-      DebugHit("no_target")
-      return nil, "no_target"
-    end
-  end
 
   local rage = Shalamayne_Conditions.PlayerRage()
   local stance = Shalamayne_Conditions.GetStance()
@@ -130,148 +93,245 @@ function Shalamayne_Rotation_Arms.Decide(L, now)
   local aoeEnemies = (Shalamayne_Settings and Shalamayne_Settings.aoeEnemies) or 2
   local sunderHp = (Shalamayne_Settings and Shalamayne_Settings.sunderArmorHp) or 1000
 
-  Shalamayne_Action.EnsureAutoAttack()
+  -- Auto-target a valid melee enemy if current target is invalid
+  if not Shalamayne_Conditions.TargetExists() then
+    if not Shalamayne_Conditions.AutoTargetMelee() then
+      DebugHit("no_target", nil, now)
+      return
+    end
+  end
+
+  AutoAttack()
 
   -- Ensure default stance is Berserker Stance (3)
   local hasOp = Shalamayne_Conditions.HasOverpowerWindow(now)
-  local sweepKnown = Shalamayne_Conditions.IsSpellKnown(L.SPELL_SWEEPING_STRIKES)
-  local sweepReady = Shalamayne_Conditions.IsSpellReady(L.SPELL_SWEEPING_STRIKES, now)
-  local sweepCond = enemyCount >= aoeEnemies and Shalamayne_Settings.useSweeping and sweepKnown and sweepReady
-  local msKnown = Shalamayne_Conditions.IsSpellKnown(L.SPELL_MORTAL_STRIKE)
-  local msReady = Shalamayne_Conditions.IsSpellReady(L.SPELL_MORTAL_STRIKE, now)
-  local msCond = Shalamayne_Settings.useMortalStrike and msKnown and msReady
+  local sweepKnown = Shalamayne_State.knownSpells and Shalamayne_State.knownSpells[L.SPELL_SWEEPING_STRIKES] or false
+  local sweepReady = sweepKnown and Shalamayne_Conditions.IsSpellReady(L.SPELL_SWEEPING_STRIKES, now)
+  local sweepCond = enemyCount >= aoeEnemies and sweepKnown and sweepReady
+
 
   DebugCheck("stance!=3", stance ~= 3, "stance=" .. tostring(stance))
   DebugCheck("hasOp", hasOp)
   DebugCheck("sweepCond", sweepCond, "enemies=" .. tostring(enemyCount) .. " aoe=" .. tostring(aoeEnemies) .. " known=" .. tostring(sweepKnown) .. " ready=" .. tostring(sweepReady))
-  DebugCheck("msCond", msCond, "known=" .. tostring(msKnown) .. " ready=" .. tostring(msReady))
 
   if stance ~= 3 and not (hasOp or sweepCond or msCond) then
-    DebugHit("stance_berseker_default", L.SPELL_BERSERKER_STANCE)
-    return SpellAction(L.SPELL_BERSERKER_STANCE, 3), "stance_berseker_default"
+    DebugHit("stance_berseker_default", L.SPELL_BERSERKER_STANCE, now)
+    QueueOrCast(L.SPELL_BERSERKER_STANCE)
+    return
+  end
+
+  local finisherExecOk = inMelee and enemyCount == 1 and hpAbs > 0 and hpAbs < 50000 and Shalamayne_Conditions.CanUseSpell(L.SPELL_EXECUTE, now)
+  DebugCheck("finisher_execute", finisherExecOk, "inMelee=" .. tostring(inMelee) .. " enemies=" .. tostring(enemyCount) .. " hp=" .. tostring(hpAbs) .. " ready=" .. tostring(Shalamayne_Conditions.CanUseSpell(L.SPELL_EXECUTE, now)))
+  if finisherExecOk then
+    DebugHit("finisher_execute", L.SPELL_EXECUTE, now)
+    if SpellStopCasting then SpellStopCasting() end
+    if stance ~= 3 then
+      QueueOrCast(L.SPELL_BERSERKER_STANCE)
+      return
+    end
+    QueueOrCast(L.SPELL_EXECUTE)
+    return
   end
 
   -- Execute when target is sub-20%.
   local execOk = inMelee and hpPct > 0 and hpPct < 20 and Shalamayne_Conditions.CanUseSpell(L.SPELL_EXECUTE, now)
   DebugCheck("execute", execOk, "inMelee=" .. tostring(inMelee) .. " hpPct=" .. string.format("%.1f", hpPct))
   if execOk then
-    DebugHit("execute", L.SPELL_EXECUTE)
-    return SpellAction(L.SPELL_EXECUTE, 3), "execute"
+    DebugHit("execute", L.SPELL_EXECUTE, now)
+    if stance ~= 3 then
+      QueueOrCast(L.SPELL_BERSERKER_STANCE)
+      return
+    end
+    QueueOrCast(L.SPELL_EXECUTE)
+    return
   end
 
-  -- Sunder Armor if target HP is above threshold and missing Sunder debuff
-  local sunderMissing = not Shalamayne_Conditions.TargetHasDebuff(L.SPELL_SUNDER_ARMOR)
+  -- Sunder Armor once per target per combat:
+  -- in melee, target HP above threshold, target sunder stacks < 5, and not already successfully sunders this target.
+  local sunderStacks = Shalamayne_Conditions.TargetSunderArmorStacks()
   local sunderReady = Shalamayne_Conditions.CanUseSpell(L.SPELL_SUNDER_ARMOR, now)
-  local sunderOk = inMelee and hpAbs > sunderHp and sunderMissing and sunderReady
-  DebugCheck("sunder", sunderOk, "inMelee=" .. tostring(inMelee) .. " hp=" .. tostring(hpAbs) .. " thresh=" .. tostring(sunderHp) .. " missing=" .. tostring(sunderMissing) .. " ready=" .. tostring(sunderReady))
+  local _, sunderGuid = UnitExists("target")
+  local sunderOnce = (sunderGuid and Shalamayne_State.sunderOnceByGuid and Shalamayne_State.sunderOnceByGuid[sunderGuid]) and true or false
+  local sunderOk = inMelee and hpAbs > sunderHp and sunderStacks < 5 and sunderReady and (not sunderOnce)
+  DebugCheck("sunder", sunderOk, "inMelee=" .. tostring(inMelee) .. " hp=" .. tostring(hpAbs) .. " thresh=" .. tostring(sunderHp) .. " stacks=" .. tostring(sunderStacks) .. " ready=" .. tostring(sunderReady) .. " once=" .. tostring(sunderOnce))
   if sunderOk then
-    DebugHit("sunder_armor", L.SPELL_SUNDER_ARMOR)
-    return SpellAction(L.SPELL_SUNDER_ARMOR, 3), "sunder_armor"
+    DebugHit("sunder_armor", L.SPELL_SUNDER_ARMOR, now)
+    if stance ~= 3 then
+      QueueOrCast(L.SPELL_BERSERKER_STANCE)
+      return
+    end
+    QueueOrCast(L.SPELL_SUNDER_ARMOR)
+    return
   end
 
   -- Overpower: requires Battle Stance.
-  local opKnown = Shalamayne_Conditions.IsSpellKnown(L.SPELL_OVERPOWER)
+  local opKnown = Shalamayne_State.knownSpells and Shalamayne_State.knownSpells[L.SPELL_OVERPOWER] or false
   local opReady = Shalamayne_Conditions.CanUseSpell(L.SPELL_OVERPOWER, now)
-  local opOk = inMelee and hasOp and opKnown
-  DebugCheck("overpower", opOk, "inMelee=" .. tostring(inMelee) .. " hasOp=" .. tostring(hasOp) .. " known=" .. tostring(opKnown) .. " ready=" .. tostring(opReady) .. " stance=" .. tostring(stance))
+  local opRageGate = (stance ~= 3) or (rage < 40)
+  local opOk = inMelee and hasOp and opKnown and opRageGate
+  DebugCheck("overpower", opOk, "inMelee=" .. tostring(inMelee) .. " hasOp=" .. tostring(hasOp) .. " known=" .. tostring(opKnown) .. " ready=" .. tostring(opReady) .. " stance=" .. tostring(stance) .. " rageGate=" .. tostring(opRageGate) .. " rage=" .. tostring(rage))
   if opOk then
     if stance ~= 1 then
-      DebugHit("stance_battle_for_overpower", L.SPELL_BATTLE_STANCE)
-      return SpellAction(L.SPELL_BATTLE_STANCE, 1), "stance_battle_for_overpower"
+      DebugHit("stance_battle_for_overpower", L.SPELL_BATTLE_STANCE, now)
+      QueueOrCast(L.SPELL_BATTLE_STANCE)
+      return
     end
     if opReady then
-      DebugHit("overpower", L.SPELL_OVERPOWER)
-      return SpellAction(L.SPELL_OVERPOWER, 1), "overpower"
+      DebugHit("overpower", L.SPELL_OVERPOWER, now)
+      QueueOrCast(L.SPELL_OVERPOWER)
+      return
     end
   end
 
   -- AoE toggle: Sweeping Strikes in Battle Stance.
-  DebugCheck("sweepingBlock", sweepCond, "rage=" .. tostring(rage) .. " stance=" .. tostring(stance))
-  if enemyCount >= aoeEnemies and Shalamayne_Settings and Shalamayne_Settings.useSweeping and Shalamayne_Conditions.IsSpellKnown(L.SPELL_SWEEPING_STRIKES) then
+  local sweepRageGate = (stance ~= 3) or (rage < 50)
+  DebugCheck("sweepingBlock", sweepCond and sweepRageGate, "rage=" .. tostring(rage) .. " stance=" .. tostring(stance) .. " rageGate=" .. tostring(sweepRageGate))
+  if enemyCount >= aoeEnemies and sweepKnown and sweepRageGate then
     if stance ~= 1 then
-      DebugHit("stance_battle_for_sweeping", L.SPELL_BATTLE_STANCE)
-      return SpellAction(L.SPELL_BATTLE_STANCE, 1), "stance_battle_for_sweeping"
+      DebugHit("stance_battle_for_sweeping", L.SPELL_BATTLE_STANCE, now)
+      QueueOrCast(L.SPELL_BATTLE_STANCE)
+      return
     end
     if rage >= 30 and Shalamayne_Conditions.CanUseSpell(L.SPELL_SWEEPING_STRIKES, now) then
-      DebugHit("sweeping", L.SPELL_SWEEPING_STRIKES)
-      return SpellAction(L.SPELL_SWEEPING_STRIKES, 1), "sweeping"
+      DebugHit("sweeping", L.SPELL_SWEEPING_STRIKES, now)
+      QueueOrCast(L.SPELL_SWEEPING_STRIKES)
+      return
     end
   end
 
-  -- Mortal Strike in Battle Stance.
+  local msKnown = Shalamayne_State.knownSpells and Shalamayne_State.knownSpells[L.SPELL_MORTAL_STRIKE] or false
+  local msReady = msKnown and Shalamayne_Conditions.IsSpellReady(L.SPELL_MORTAL_STRIKE, now)
+  local msCond = msKnown and msReady
   DebugCheck("mortalStrikeBlock", msCond, "rage=" .. tostring(rage) .. " stance=" .. tostring(stance))
-  if Shalamayne_Settings and Shalamayne_Settings.useMortalStrike and Shalamayne_Conditions.IsSpellKnown(L.SPELL_MORTAL_STRIKE) then
-    if stance ~= 1 then
-      DebugHit("stance_battle_for_ms", L.SPELL_BATTLE_STANCE)
-      return SpellAction(L.SPELL_BATTLE_STANCE, 1), "stance_battle_for_ms"
+
+  local wwKnown = Shalamayne_State.knownSpells and Shalamayne_State.knownSpells[L.SPELL_WHIRLWIND] or false
+  local wwReady = Shalamayne_Conditions.CanUseSpell(L.SPELL_WHIRLWIND, now)
+  local wwOk = enemyCount >= aoeEnemies and wwKnown
+  DebugCheck("whirlwindBlock", wwOk, "rage=" .. tostring(rage) .. " stance=" .. tostring(stance) .. " ready=" .. tostring(wwReady))
+
+  local function TryWhirlwind()
+    if enemyCount >= aoeEnemies and wwKnown and rage >= 25 and Shalamayne_Conditions.CanUseSpell(L.SPELL_WHIRLWIND, now) then
+      if stance ~= 3 and rage < 50 then
+        DebugHit("stance_berseker_for_ww", L.SPELL_BERSERKER_STANCE, now)
+        QueueOrCast(L.SPELL_BERSERKER_STANCE)
+        return true
+      end
+      if stance == 3 then
+        DebugHit("whirlwind", L.SPELL_WHIRLWIND, now)
+        QueueOrCast(L.SPELL_WHIRLWIND)
+        return true
+      end
     end
-    if rage >= 30 and Shalamayne_Conditions.CanUseSpell(L.SPELL_MORTAL_STRIKE, now) then
-      DebugHit("mortal_strike", L.SPELL_MORTAL_STRIKE)
-      return SpellAction(L.SPELL_MORTAL_STRIKE, 1), "mortal_strike"
-    end
+    return false
   end
 
-  -- AoE toggle: Whirlwind in Berserker Stance.
-  local wwKnown = Shalamayne_Conditions.IsSpellKnown(L.SPELL_WHIRLWIND)
-  local wwReady = Shalamayne_Conditions.CanUseSpell(L.SPELL_WHIRLWIND, now)
-  local wwOk = enemyCount >= aoeEnemies and Shalamayne_Settings and Shalamayne_Settings.useWhirlwind and wwKnown
-  DebugCheck("whirlwindBlock", wwOk, "rage=" .. tostring(rage) .. " stance=" .. tostring(stance) .. " ready=" .. tostring(wwReady))
-  if enemyCount >= aoeEnemies and Shalamayne_Settings and Shalamayne_Settings.useWhirlwind and Shalamayne_Conditions.IsSpellKnown(L.SPELL_WHIRLWIND) then
-    if stance ~= 3 then
-      DebugHit("stance_berseker_for_ww", L.SPELL_BERSERKER_STANCE)
-      return SpellAction(L.SPELL_BERSERKER_STANCE, 3), "stance_berseker_for_ww"
+  local function TryMortalStrike()
+    if not msKnown then return false end
+    if rage >= 30 and Shalamayne_Conditions.CanUseSpell(L.SPELL_MORTAL_STRIKE, now) then
+      DebugHit("mortal_strike", L.SPELL_MORTAL_STRIKE, now)
+      QueueOrCast(L.SPELL_MORTAL_STRIKE)
+      return true
     end
-    if rage >= 25 and Shalamayne_Conditions.CanUseSpell(L.SPELL_WHIRLWIND, now) then
-      DebugHit("whirlwind", L.SPELL_WHIRLWIND)
-      return SpellAction(L.SPELL_WHIRLWIND, 3), "whirlwind"
+    return false
+  end
+
+  if enemyCount > 1 then
+    if TryWhirlwind() then return end
+    if TryMortalStrike() then return end
+  else
+    if TryMortalStrike() then return end
+    if TryWhirlwind() then return end
+  end
+
+  local execKnown = Shalamayne_State.knownSpells and Shalamayne_State.knownSpells[L.SPELL_EXECUTE] or false
+  local msCd = msKnown and (not Shalamayne_Conditions.IsSpellReady(L.SPELL_MORTAL_STRIKE, now))
+  local wwCd = wwKnown and (not Shalamayne_Conditions.IsSpellReady(L.SPELL_WHIRLWIND, now))
+  if enemyCount > 1 and execKnown and msCd and wwCd and rage >= 15 and MPScanNearbyEnemiesCount then
+    local _, _, nearList = MPScanNearbyEnemiesCount(4.0)
+    if nearList then
+      local bestGuid = nil
+      local bestArmor = nil
+      for guid in pairs(nearList) do
+        local exists = UnitExists(guid)
+        if exists and UnitCanAttack("player", guid) and not UnitIsDead(guid) then
+          local hpMax = UnitHealthMax(guid) or 0
+          if hpMax > 0 then
+            local hpPct2 = (UnitHealth(guid) or 0) / hpMax
+            if hpPct2 > 0 and hpPct2 < 0.2 then
+              local armorBase, armorEff = UnitArmor(guid)
+              local armor = armorEff or armorBase
+              if armor then
+                if bestArmor == nil or armor < bestArmor then
+                  bestArmor = armor
+                  bestGuid = guid
+                end
+              end
+            end
+          end
+        end
+      end
+
+      if bestGuid then
+        DebugHit("execute_other_low_armor", L.SPELL_EXECUTE, now)
+        local spellId = GetSpellIdForName and GetSpellIdForName(L.SPELL_EXECUTE)
+        if spellId and CastSpellNoQueue then
+          pcall(CastSpellNoQueue, spellId, 0, bestGuid)
+        elseif QueueSpellByName then
+          pcall(QueueSpellByName, L.SPELL_EXECUTE, bestGuid)
+        elseif CastSpellByName then
+          pcall(CastSpellByName, L.SPELL_EXECUTE, bestGuid)
+        end
+        return
+      end
     end
   end
 
   -- Bloodrage as a low-rage stabilizer.
-  local brKnown = Shalamayne_Conditions.IsSpellKnown(L.SPELL_BLOODRAGE)
+  local brKnown = Shalamayne_State.knownSpells and Shalamayne_State.knownSpells[L.SPELL_BLOODRAGE] or false
   local brReady = Shalamayne_Conditions.CanUseSpell(L.SPELL_BLOODRAGE, now)
-  local brOk = Shalamayne_Settings and Shalamayne_Settings.useBloodrage and brKnown and rage < 10 and brReady
+  local brOk = brKnown and rage < 10 and brReady
   DebugCheck("bloodrage", brOk, "rage=" .. tostring(rage) .. " known=" .. tostring(brKnown) .. " ready=" .. tostring(brReady))
-  if Shalamayne_Settings and Shalamayne_Settings.useBloodrage and Shalamayne_Conditions.IsSpellKnown(L.SPELL_BLOODRAGE) then
+  if brKnown then
     if rage < 10 and Shalamayne_Conditions.CanUseSpell(L.SPELL_BLOODRAGE, now) then
-      DebugHit("bloodrage", L.SPELL_BLOODRAGE)
-      return SpellAction(L.SPELL_BLOODRAGE, stance), "bloodrage"
+      DebugHit("bloodrage", L.SPELL_BLOODRAGE, now)
+      QueueOrCast(L.SPELL_BLOODRAGE)
+      return
     end
   end
 
   -- Heroic Strike as a rage dump.
   local hsRage = (Shalamayne_Settings and Shalamayne_Settings.heroicStrikeRage) or 50
-  local hsKnown = Shalamayne_Conditions.IsSpellKnown(L.SPELL_HEROIC_STRIKE)
+  local hsKnown = Shalamayne_State.knownSpells and Shalamayne_State.knownSpells[L.SPELL_HEROIC_STRIKE] or false
   local hsReady = Shalamayne_Conditions.CanUseSpell(L.SPELL_HEROIC_STRIKE, now)
-  local hsOk = inMelee and Shalamayne_Settings and Shalamayne_Settings.useHeroicStrike and rage >= hsRage and hsKnown and hsReady
+  local hsOk = inMelee and rage >= hsRage and hsKnown and hsReady
   DebugCheck("heroic_strike", hsOk, "rage=" .. tostring(rage) .. " req=" .. tostring(hsRage) .. " inMelee=" .. tostring(inMelee) .. " known=" .. tostring(hsKnown) .. " ready=" .. tostring(hsReady))
-  if inMelee and Shalamayne_Settings and Shalamayne_Settings.useHeroicStrike and rage >= hsRage and Shalamayne_Conditions.IsSpellKnown(L.SPELL_HEROIC_STRIKE) then
+  if inMelee and rage >= hsRage and hsKnown then
     if Shalamayne_Conditions.CanUseSpell(L.SPELL_HEROIC_STRIKE, now) then
-      DebugHit("heroic_strike", L.SPELL_HEROIC_STRIKE)
-      return SpellAction(L.SPELL_HEROIC_STRIKE, 3), "heroic_strike"
+      DebugHit("heroic_strike", L.SPELL_HEROIC_STRIKE, now)
+      if stance ~= 3 then
+        QueueOrCast(L.SPELL_BERSERKER_STANCE)
+        return
+      end
+      QueueOrCast(L.SPELL_HEROIC_STRIKE)
+      return
     end
   end
 
-  DebugHit("no_action")
-  return nil, "no_action"
-end
-
-Shalamayne_Rotation_Fury = {}
-
-local function SpellAction(spellName, requiredStance)
-  return { type = "spell", spell = spellName, stance = requiredStance }
+  DebugHit("no_action", nil, now)
+  return
 end
 
 -- Fury (dual-wield) rotation.
--- Uses Berserker Stance as the default combat stance.
+-- Decide performs the action directly (casts/switches stance) and returns nothing.
 function Shalamayne_Rotation_Fury.Decide(L, now)
   now = now or GetTime()
-  if not Shalamayne_State.inCombat then return nil, "not_in_combat" end
+  if not Shalamayne_State.inCombat then
+    return
+  end
 
-  -- Auto-target a valid melee enemy if current target is invalid
   if not Shalamayne_Conditions.TargetExists() then
     if not Shalamayne_Conditions.AutoTargetMelee() then
-      return nil, "no_target"
+      return
     end
   end
 
@@ -284,52 +344,60 @@ function Shalamayne_Rotation_Fury.Decide(L, now)
   local aoeEnemies = (Shalamayne_Settings and Shalamayne_Settings.aoeEnemies) or 2
   local sunderHp = (Shalamayne_Settings and Shalamayne_Settings.sunderArmorHp) or 1000
 
-  Shalamayne_Action.EnsureAutoAttack()
+  AutoAttack()
 
   if stance ~= 3 then
-    return SpellAction(L.SPELL_BERSERKER_STANCE, 3), "stance_berseker"
+    QueueOrCast(L.SPELL_BERSERKER_STANCE)
+    return
   end
 
-  -- Execute when target is sub-20%.
   if inMelee and hpPct > 0 and hpPct < 20 and Shalamayne_Conditions.CanUseSpell(L.SPELL_EXECUTE, now) then
-    return SpellAction(L.SPELL_EXECUTE, 3), "execute"
+    QueueOrCast(L.SPELL_EXECUTE)
+    return
   end
 
-  -- Sunder Armor if target HP is above threshold and missing Sunder debuff
-  if inMelee and hpAbs > sunderHp and not Shalamayne_Conditions.TargetHasDebuff(L.SPELL_SUNDER_ARMOR) then
-    if Shalamayne_Conditions.CanUseSpell(L.SPELL_SUNDER_ARMOR, now) then
-      return SpellAction(L.SPELL_SUNDER_ARMOR, 3), "sunder_armor"
+  local sunderStacks = Shalamayne_Conditions.TargetSunderArmorStacks()
+  if inMelee and hpAbs > sunderHp and sunderStacks < 5 then
+    local _, sunderGuid = UnitExists("target")
+    local sunderOnce = (sunderGuid and Shalamayne_State.sunderOnceByGuid and Shalamayne_State.sunderOnceByGuid[sunderGuid]) and true or false
+    if (not sunderOnce) and Shalamayne_Conditions.CanUseSpell(L.SPELL_SUNDER_ARMOR, now) then
+      QueueOrCast(L.SPELL_SUNDER_ARMOR)
+      return
     end
   end
 
-  -- Bloodthirst on cooldown.
-  if Shalamayne_Settings and Shalamayne_Settings.useBloodthirst and Shalamayne_Conditions.IsSpellKnown(L.SPELL_BLOODTHIRST) then
+  local btKnown = Shalamayne_State.knownSpells and Shalamayne_State.knownSpells[L.SPELL_BLOODTHIRST] or false
+  if btKnown then
     if rage >= 30 and Shalamayne_Conditions.CanUseSpell(L.SPELL_BLOODTHIRST, now) then
-      return SpellAction(L.SPELL_BLOODTHIRST, 3), "bloodthirst"
+      QueueOrCast(L.SPELL_BLOODTHIRST)
+      return
     end
   end
 
-  -- Whirlwind for AoE.
-  if enemyCount >= aoeEnemies and Shalamayne_Settings and Shalamayne_Settings.useWhirlwind and Shalamayne_Conditions.IsSpellKnown(L.SPELL_WHIRLWIND) then
+  local wwKnown = Shalamayne_State.knownSpells and Shalamayne_State.knownSpells[L.SPELL_WHIRLWIND] or false
+  if enemyCount >= aoeEnemies and wwKnown then
     if rage >= 25 and Shalamayne_Conditions.CanUseSpell(L.SPELL_WHIRLWIND, now) then
-      return SpellAction(L.SPELL_WHIRLWIND, 3), "whirlwind"
+      QueueOrCast(L.SPELL_WHIRLWIND)
+      return
     end
   end
 
-  -- Bloodrage as a low-rage stabilizer.
-  if Shalamayne_Settings and Shalamayne_Settings.useBloodrage and Shalamayne_Conditions.IsSpellKnown(L.SPELL_BLOODRAGE) then
+  local brKnown = Shalamayne_State.knownSpells and Shalamayne_State.knownSpells[L.SPELL_BLOODRAGE] or false
+  if brKnown then
     if rage < 10 and Shalamayne_Conditions.CanUseSpell(L.SPELL_BLOODRAGE, now) then
-      return SpellAction(L.SPELL_BLOODRAGE, 3), "bloodrage"
+      QueueOrCast(L.SPELL_BLOODRAGE)
+      return
     end
   end
 
-  -- Heroic Strike as a rage dump.
   local hsRage = (Shalamayne_Settings and Shalamayne_Settings.heroicStrikeRage) or 50
-  if inMelee and Shalamayne_Settings and Shalamayne_Settings.useHeroicStrike and rage >= hsRage and Shalamayne_Conditions.IsSpellKnown(L.SPELL_HEROIC_STRIKE) then
+  local hsKnown = Shalamayne_State.knownSpells and Shalamayne_State.knownSpells[L.SPELL_HEROIC_STRIKE] or false
+  if inMelee and rage >= hsRage and hsKnown then
     if Shalamayne_Conditions.CanUseSpell(L.SPELL_HEROIC_STRIKE, now) then
-      return SpellAction(L.SPELL_HEROIC_STRIKE, 3), "heroic_strike"
+      QueueOrCast(L.SPELL_HEROIC_STRIKE)
+      return
     end
   end
 
-  return nil, "no_action"
+  return
 end
