@@ -32,7 +32,7 @@ local function CreateFrameOnce(L)
 
   local f = CreateFrame("Frame", "Shalamayne_ConfigFrame", UIParent)
   f:SetWidth(360)
-  f:SetHeight(260)
+  f:SetHeight(284)
   f:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
   f:SetBackdrop({
     bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -95,7 +95,17 @@ local function CreateFrameOnce(L)
   sunderBox:SetPoint("TOPLEFT", f, "TOPLEFT", 150, -176)
   sunderBox:SetNumeric(true)
 
-  local btnApply = CreateButton(f, "Apply", 240, -176, 90)
+  local finLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  finLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -202)
+  finLabel:SetText(L.UI_FINISHER_EXECUTE_HP)
+  local finBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+  finBox:SetAutoFocus(false)
+  finBox:SetWidth(60)
+  finBox:SetHeight(18)
+  finBox:SetPoint("TOPLEFT", f, "TOPLEFT", 150, -200)
+  finBox:SetNumeric(true)
+
+  local btnApply = CreateButton(f, "Apply", 240, -200, 90)
 
   -- Refresh UI elements to match current settings
   local function Refresh()
@@ -104,6 +114,7 @@ local function CreateFrameOnce(L)
     hsBox:SetNumber(Shalamayne_Settings.heroicStrikeRage or 50)
     aoeBox:SetNumber(Shalamayne_Settings.aoeEnemies or 2)
     sunderBox:SetNumber(Shalamayne_Settings.sunderArmorHp or 1000)
+    finBox:SetNumber(Shalamayne_Settings.finisherExecuteHp or 50000)
   end
 
   cbEnabled:SetScript("OnClick", function() Shalamayne_Settings.enabled = cbEnabled:GetChecked() == 1 end)
@@ -123,6 +134,7 @@ local function CreateFrameOnce(L)
     Shalamayne_Settings.heroicStrikeRage = tonumber(hsBox:GetText()) or 50
     Shalamayne_Settings.aoeEnemies = tonumber(aoeBox:GetText()) or 2
     Shalamayne_Settings.sunderArmorHp = tonumber(sunderBox:GetText()) or 1000
+    Shalamayne_Settings.finisherExecuteHp = tonumber(finBox:GetText()) or 50000
     Refresh()
   end)
 

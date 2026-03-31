@@ -5,6 +5,154 @@ Shalamayne_Spellbook = {
 
 local BOOKTYPE_SPELL = BOOKTYPE_SPELL or "spell"
 
+local function StripRank(name)
+  if type(name) ~= "string" then return name end
+  name = string.gsub(name, "%s*%(%s*[Rr]ank%s+%d+%s*%)%s*$", "")
+  return name
+end
+
+local function GetUnitGuid(unit)
+  if GetUnitGUID then
+    local guid = GetUnitGUID(unit)
+    if guid then return tostring(guid) end
+  end
+  local exists, guid = UnitExists(unit)
+  if exists and guid then
+    return tostring(guid)
+  end
+  return nil
+end
+
+local Shalamayne_NP = {
+  spellIdCache = {},
+}
+
+local function GetSpellIdFromName(spellName)
+  if not spellName then return nil end
+  local cache = Shalamayne_NP.spellIdCache
+  if cache[spellName] then
+    return cache[spellName]
+  end
+  if GetSpellIdForName then
+    local spellId = GetSpellIdForName(spellName)
+    if spellId and spellId > 0 then
+      cache[spellName] = spellId
+      return spellId
+    end
+  end
+  return nil
+end
+
+local function GetSpellSlotInfo(spellName)
+  if not spellName then return nil end
+  if GetSpellSlotTypeIdForName then
+    local slot, bookType, spellId = GetSpellSlotTypeIdForName(spellName)
+    if slot and slot > 0 then
+      return slot, bookType, spellId
+    end
+  end
+  local slot = Shalamayne_Spellbook.GetSlot(spellName)
+  if slot then
+    return slot, BOOKTYPE_SPELL, GetSpellIdFromName(spellName)
+  end
+  return nil
+end
+
+local function GetSpellCooldownInfo(spellId, spellName)
+  if spellId and GetSpellIdCooldown then
+    local ok, info = pcall(GetSpellIdCooldown, spellId)
+    if ok and info then
+      return info
+    end
+  end
+  local slot = nil
+  if spellName then
+    slot = Shalamayne_Spellbook.GetSlot(spellName)
+  end
+  if not slot and spellName then
+    local s = GetSpellSlotInfo(spellName)
+    slot = s
+  end
+  if not slot then
+    return nil
+  end
+  local start, duration, enabled = GetSpellCooldown(slot, BOOKTYPE_SPELL)
+  if enabled == 0 then
+    return { isOnCooldown = 1, cooldownRemainingMs = 999999 }
+  end
+  if start and duration and start > 0 and duration > 0 then
+    local remaining = (start + duration) - GetTime()
+    if remaining > 0 then
+      return { isOnCooldown = 1, cooldownRemainingMs = remaining * 1000 }
+    end
+  end
+  return { isOnCooldown = 0, cooldownRemainingMs = 0 }
+end
+
+local function IsSpellOnCooldown(spellId, spellName, ignoreGCD)
+  local info = GetSpellCooldownInfo(spellId, spellName)
+  if not info then return false end
+  if ignoreGCD and info.isOnCooldown == 1 then
+    if info.isOnIndividualCooldown == 1 or info.isOnCategoryCooldown == 1 then
+      return true
+    end
+    if not info.isOnIndividualCooldown and not info.isOnCategoryCooldown then
+      local remainingMs = info.cooldownRemainingMs or 0
+      if remainingMs > 0 and remainingMs <= 1600 then
+        return false
+      end
+    end
+  end
+  return info.isOnCooldown == 1
+end
+
+local function IsSpellUsableWrapper(spellId, spellName)
+  if not IsSpellUsable then
+    return nil
+  end
+  local ok, usable, oom
+  if spellId and spellId > 0 then
+    ok, usable, oom = pcall(IsSpellUsable, spellId)
+    if ok then return usable, oom end
+  end
+  ok, usable, oom = pcall(IsSpellUsable, spellName)
+  if ok then return usable, oom end
+  return nil
+end
+
+local function GetUnitAuras(unitToken)
+  if not GetUnitField then return nil end
+  local ok, auras = pcall(GetUnitField, unitToken, "aura")
+  if ok then return auras end
+  return nil
+end
+
+local function FindUnitAuraInfo(unitToken, searchSpellId, searchNameLower)
+  if not unitToken then return nil end
+  if not searchSpellId and not searchNameLower then return nil end
+  local auras = GetUnitAuras(unitToken)
+  if not auras then return nil end
+  for i = 33, 48 do
+    local auraId = auras[i]
+    if auraId and auraId ~= 0 then
+      if searchSpellId and auraId == searchSpellId then
+        local _, stacks = UnitDebuff(unitToken, i - 32)
+        return true, auraId, stacks, i
+      elseif searchNameLower and GetSpellRecField then
+        local name = GetSpellRecField(auraId, "name")
+        if name then
+          local baseName = StripRank(name)
+          if string.lower(baseName) == searchNameLower then
+            local _, stacks = UnitDebuff(unitToken, i - 32)
+            return true, auraId, stacks, i
+          end
+        end
+      end
+    end
+  end
+  return false
+end
+
 -- Wipe all keys from a table
 local function Wipe(t)
   for k in pairs(t) do t[k] = nil end
@@ -71,9 +219,87 @@ function Shalamayne_EnemyScanner.CountEnemiesInMelee()
     return Shalamayne_EnemyScanner.lastCount
   end
 
+  local function ScanGuidsInRange(rangeYards)
+    if not Shalamayne_EnemyScanner.knownEnemyGuids then
+      Shalamayne_EnemyScanner.knownEnemyGuids = {}
+    end
+    local knownEnemyGuids = Shalamayne_EnemyScanner.knownEnemyGuids
+    local checked = {}
+    local count = 0
+
+    local function InRange(unit)
+      if not unit or not UnitExists(unit) then return false end
+      if UnitIsDeadOrGhost(unit) then return false end
+      if not UnitCanAttack("player", unit) then return false end
+      if UnitXP then
+        local okDist, dist = pcall(UnitXP, "distanceBetween", "player", unit)
+        return okDist and dist and dist <= rangeYards
+      end
+      if CheckInteractDistance then
+        local okInteract, inRange = pcall(CheckInteractDistance, unit, 3)
+        return okInteract and inRange == 1
+      end
+      return false
+    end
+
+    local function tryUnit(unit)
+      if not InRange(unit) then return end
+      local guid = GetUnitGuid(unit)
+      if guid then
+        if checked[guid] then return end
+        checked[guid] = true
+        knownEnemyGuids[guid] = true
+      end
+      count = count + 1
+    end
+
+    tryUnit("target")
+    tryUnit("targettarget")
+    tryUnit("pettarget")
+    for i = 1, 4 do
+      tryUnit("party" .. i .. "target")
+    end
+    if GetNumRaidMembers and GetNumRaidMembers() > 0 then
+      for i = 1, 40 do
+        tryUnit("raid" .. i .. "target")
+      end
+    end
+
+    local numChildren = WorldFrame and WorldFrame.GetNumChildren and WorldFrame:GetNumChildren() or 0
+    if numChildren and numChildren > 0 and WorldFrame and WorldFrame.GetChildren then
+      local children = { WorldFrame:GetChildren() }
+      for i = 1, numChildren do
+        local frame = children[i]
+        if frame and frame.IsVisible and frame:IsVisible() and frame.GetName then
+          local okName, guid = pcall(frame.GetName, frame, 1)
+          if okName and guid and type(guid) == "string" and string.len(guid) > 0 and not checked[guid] then
+            if InRange(guid) then
+              checked[guid] = true
+              knownEnemyGuids[guid] = true
+              count = count + 1
+            end
+          end
+        end
+      end
+    end
+
+    for guid in pairs(knownEnemyGuids) do
+      if not checked[guid] then
+        if InRange(guid) then
+          checked[guid] = true
+          count = count + 1
+        end
+      end
+    end
+
+    return checked, count
+  end
+
+  local _, count = ScanGuidsInRange(Shalamayne_EnemyScanner.rangeYards)
+
   local originalGuid = GetTargetGuid()
   local seen = {}
-  local count = 0
+  local count2 = 0
 
   local ok = pcall(UnitXP, "target", "nearestEnemy")
   if not ok or not UnitExists("target") then
@@ -97,7 +323,7 @@ function Shalamayne_EnemyScanner.CountEnemiesInMelee()
       seen[currentGuid] = true
       local okDist, dist = pcall(UnitXP, "distanceBetween", "player", "target")
       if okDist and dist and dist <= Shalamayne_EnemyScanner.rangeYards then
-        count = count + 1
+        count2 = count2 + 1
       end
     end
 
@@ -112,10 +338,86 @@ function Shalamayne_EnemyScanner.CountEnemiesInMelee()
 
   RestoreTarget(originalGuid)
 
+  if count < 1 then
+    count = count2
+  end
   if count < 1 then count = 1 end
   Shalamayne_EnemyScanner.lastScanAt = now
   Shalamayne_EnemyScanner.lastCount = count
   return count
+end
+
+function Shalamayne_EnemyScanner.GetEnemyGuidsInRange(rangeYards)
+  rangeYards = rangeYards or Shalamayne_EnemyScanner.rangeYards
+  if not Shalamayne_EnemyScanner.knownEnemyGuids then
+    Shalamayne_EnemyScanner.knownEnemyGuids = {}
+  end
+  local knownEnemyGuids = Shalamayne_EnemyScanner.knownEnemyGuids
+  local checked = {}
+
+  local function InRange(unit)
+    if not unit or not UnitExists(unit) then return false end
+    if UnitIsDeadOrGhost(unit) then return false end
+    if not UnitCanAttack("player", unit) then return false end
+    if UnitXP then
+      local okDist, dist = pcall(UnitXP, "distanceBetween", "player", unit)
+      return okDist and dist and dist <= rangeYards
+    end
+    if CheckInteractDistance then
+      local okInteract, inRange = pcall(CheckInteractDistance, unit, 3)
+      return okInteract and inRange == 1
+    end
+    return false
+  end
+
+  local function addUnit(unit)
+    if not InRange(unit) then return end
+    local guid = GetUnitGuid(unit)
+    if guid then
+      if checked[guid] then return end
+      checked[guid] = true
+      knownEnemyGuids[guid] = true
+    end
+  end
+
+  addUnit("target")
+  addUnit("targettarget")
+  addUnit("pettarget")
+  for i = 1, 4 do
+    addUnit("party" .. i .. "target")
+  end
+  if GetNumRaidMembers and GetNumRaidMembers() > 0 then
+    for i = 1, 40 do
+      addUnit("raid" .. i .. "target")
+    end
+  end
+
+  local numChildren = WorldFrame and WorldFrame.GetNumChildren and WorldFrame:GetNumChildren() or 0
+  if numChildren and numChildren > 0 and WorldFrame and WorldFrame.GetChildren then
+    local children = { WorldFrame:GetChildren() }
+    for i = 1, numChildren do
+      local frame = children[i]
+      if frame and frame.IsVisible and frame:IsVisible() and frame.GetName then
+        local okName, guid = pcall(frame.GetName, frame, 1)
+        if okName and guid and type(guid) == "string" and string.len(guid) > 0 and not checked[guid] then
+          if InRange(guid) then
+            checked[guid] = true
+            knownEnemyGuids[guid] = true
+          end
+        end
+      end
+    end
+  end
+
+  for guid in pairs(knownEnemyGuids) do
+    if not checked[guid] then
+      if InRange(guid) then
+        checked[guid] = true
+      end
+    end
+  end
+
+  return checked
 end
 
 
@@ -210,8 +512,21 @@ end
 
 -- Current stance: 1=Battle, 2=Defensive, 3=Berserker.
 function Shalamayne_Conditions.GetStance()
-  local form = GetShapeshiftForm and GetShapeshiftForm() or 0
-  return form
+  if GetNumShapeshiftForms and GetShapeshiftFormInfo then
+    local L = Shalamayne_Locals
+    local battle = L and L.STANCE_BATTLE_NAME or "Battle Stance"
+    local defensive = L and L.STANCE_DEFENSIVE_NAME or "Defensive Stance"
+    local berserker = L and L.STANCE_BERSERKER_NAME or "Berserker Stance"
+    for i = 1, GetNumShapeshiftForms() do
+      local _, name, active = GetShapeshiftFormInfo(i)
+      if active then
+        if name == battle then return 1 end
+        if name == defensive then return 2 end
+        if name == berserker then return 3 end
+      end
+    end
+    return 0
+  end
 end
 
 -- Overpower becomes usable for a short window after your attack is dodged.
@@ -240,30 +555,54 @@ end
 
 -- Spell known check via cached spellbook slot.
 function Shalamayne_Conditions.IsSpellKnown(spellName)
-  return Shalamayne_Spellbook.GetSlot(spellName) ~= nil
+  local slot = GetSpellSlotInfo(spellName)
+  if slot then return true end
+  local sid = GetSpellIdFromName(spellName)
+  return sid ~= nil
 end
 
 -- Spell cooldown check by spellbook slot.
 function Shalamayne_Conditions.IsSpellReady(spellName, now)
-  local slot = Shalamayne_Spellbook.GetSlot(spellName)
-  if not slot then return false end
   now = now or GetTime()
-  local start, duration, enabled = GetSpellCooldown(slot, BOOKTYPE_SPELL)
-  if enabled == 0 then return false end
-  if start == 0 or duration == 0 then return true end
-  return (start + duration) <= now
+  if not Shalamayne_Conditions.IsSpellKnown(spellName) then
+    return false
+  end
+  local spellId = GetSpellIdFromName(spellName)
+  if IsSpellOnCooldown(spellId, spellName, true) then
+    return false
+  end
+  return true
 end
 
 -- Full usability check: cooldown + resource requirements.
 function Shalamayne_Conditions.CanUseSpell(spellName, now)
-  if not Shalamayne_Conditions.IsSpellReady(spellName, now) then return false end
-  if IsSpellUsable then
-    local ok, usable, noResource = pcall(IsSpellUsable, spellName)
-    if ok then
-      if noResource then return false end
-      return usable ~= nil and usable ~= 0
+  now = now or GetTime()
+
+  if not Shalamayne_Conditions.IsSpellKnown(spellName) then
+    return false
+  end
+
+  local spellId = GetSpellIdFromName(spellName)
+  if IsSpellOnCooldown(spellId, spellName, true) then
+    return false
+  end
+
+  local usable, noResource = IsSpellUsableWrapper(spellId, spellName)
+  if usable ~= nil then
+    if noResource then return false end
+    return usable ~= 0
+  end
+
+  if spellId and GetSpellRecField then
+    local okCost, cost = pcall(GetSpellRecField, spellId, "manaCost")
+    if okCost and cost and cost > 0 then
+      local power = UnitMana("player") or 0
+      if power < cost then
+        return false
+      end
     end
   end
+
   return true
 end
 
@@ -281,9 +620,22 @@ function Shalamayne_Conditions.EnemiesInRange()
   return 1
 end
 
+function Shalamayne_Conditions.EnemyGuidsInMelee(rangeYards)
+  if Shalamayne_EnemyScanner and Shalamayne_EnemyScanner.GetEnemyGuidsInRange then
+    return Shalamayne_EnemyScanner.GetEnemyGuidsInRange(rangeYards)
+  end
+  return {}
+end
+
 -- Checks if the target has a specific debuff by name
 function Shalamayne_Conditions.TargetHasDebuff(debuffName)
   if not Shalamayne_Conditions.TargetExists() then return false end
+  local searchId = GetSpellIdFromName(debuffName)
+  local searchLower = string.lower(StripRank(debuffName))
+  local found = FindUnitAuraInfo("target", searchId, searchLower)
+  if found ~= nil then
+    return found and true or false
+  end
   local i = 1
   while true do
     local texture, stacks = UnitDebuff("target", i)
@@ -292,7 +644,7 @@ function Shalamayne_Conditions.TargetHasDebuff(debuffName)
     
     -- In 1.12 UnitDebuff returns the texture path, we do a basic string match
     -- Usually debuffName is the spell name, so this is a simplified fallback
-    -- Note: NampowerAPI or SuperCleveRoids might provide a better UnitDebuff wrapper returning names.
+    -- Note: extensions might provide a better UnitDebuff wrapper returning names.
     -- Here we use the texture path as a simple heuristic if it contains the name (lowercased, spaces removed)
     -- A more robust way in 1.12 without extensions is scanning tooltip, but for Sunder Armor,
     -- checking for the known texture "Ability_Warrior_Sunder" is standard.
@@ -317,6 +669,14 @@ end
 -- In 1.12 UnitDebuff returns texture and stack count; we match by texture.
 function Shalamayne_Conditions.TargetSunderArmorStacks()
   if not Shalamayne_Conditions.TargetExists() then return 0 end
+  local sid = GetSpellIdFromName("Sunder Armor") or GetSpellIdFromName("破甲攻击")
+  local found, _, stacks = FindUnitAuraInfo("target", sid, "sunder armor")
+  if found ~= nil then
+    if found then
+      return tonumber(stacks) or 0
+    end
+    return 0
+  end
   local i = 1
   while true do
     local texture, stacks = UnitDebuff("target", i)

@@ -24,6 +24,7 @@ local function EnsureDefaults()
   if Shalamayne_Settings.heroicStrikeRage == nil then Shalamayne_Settings.heroicStrikeRage = 50 end
   if Shalamayne_Settings.aoeEnemies == nil then Shalamayne_Settings.aoeEnemies = 2 end
   if Shalamayne_Settings.sunderArmorHp == nil then Shalamayne_Settings.sunderArmorHp = 1000 end
+  if Shalamayne_Settings.finisherExecuteHp == nil then Shalamayne_Settings.finisherExecuteHp = 50000 end
 end
 
 -- Compare version numbers
@@ -405,16 +406,6 @@ frame:SetScript("OnEvent", function()
   if event == "PLAYER_REGEN_DISABLED" then
     Shalamayne_State.inCombat = true
     Shalamayne_Spellbook.Scan()
-    Shalamayne_State.knownSpells = {}
-    Shalamayne_State.knownSpells[L.SPELL_OVERPOWER] = Shalamayne_Spellbook.GetSlot(L.SPELL_OVERPOWER) ~= nil
-    Shalamayne_State.knownSpells[L.SPELL_MORTAL_STRIKE] = Shalamayne_Spellbook.GetSlot(L.SPELL_MORTAL_STRIKE) ~= nil
-    Shalamayne_State.knownSpells[L.SPELL_SWEEPING_STRIKES] = Shalamayne_Spellbook.GetSlot(L.SPELL_SWEEPING_STRIKES) ~= nil
-    Shalamayne_State.knownSpells[L.SPELL_WHIRLWIND] = Shalamayne_Spellbook.GetSlot(L.SPELL_WHIRLWIND) ~= nil
-    Shalamayne_State.knownSpells[L.SPELL_BLOODRAGE] = Shalamayne_Spellbook.GetSlot(L.SPELL_BLOODRAGE) ~= nil
-    Shalamayne_State.knownSpells[L.SPELL_HEROIC_STRIKE] = Shalamayne_Spellbook.GetSlot(L.SPELL_HEROIC_STRIKE) ~= nil
-    Shalamayne_State.knownSpells[L.SPELL_EXECUTE] = Shalamayne_Spellbook.GetSlot(L.SPELL_EXECUTE) ~= nil
-    Shalamayne_State.knownSpells[L.SPELL_SUNDER_ARMOR] = Shalamayne_Spellbook.GetSlot(L.SPELL_SUNDER_ARMOR) ~= nil
-    Shalamayne_State.knownSpells[L.SPELL_BLOODTHIRST] = Shalamayne_Spellbook.GetSlot(L.SPELL_BLOODTHIRST) ~= nil
     if not Shalamayne_State.mainhandSwingTime or Shalamayne_State.mainhandSwingTime == 0 then
       Shalamayne_State.mainhandSwingTime = GetTime()
       Swing.UpdateDurations(false)

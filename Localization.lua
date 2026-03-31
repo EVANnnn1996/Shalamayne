@@ -32,10 +32,14 @@ Shalamayne_Localization = {
     UI_HS_RAGE = "Heroic Strike rage >=",
     UI_AOE_ENEMIES = "AoE enemies >=",
     UI_SUNDER_HP = "Sunder Armor HP >",
+    UI_FINISHER_EXECUTE_HP = "Finisher Execute HP <",
 
     SPELL_BATTLE_STANCE = "Battle Stance",
     SPELL_DEFENSIVE_STANCE = "Defensive Stance",
     SPELL_BERSERKER_STANCE = "Berserker Stance",
+    STANCE_BATTLE_NAME = "Battle Stance",
+    STANCE_DEFENSIVE_NAME = "Defensive Stance",
+    STANCE_BERSERKER_NAME = "Berserker Stance",
     SPELL_OVERPOWER = "Overpower",
     SPELL_MORTAL_STRIKE = "Mortal Strike",
     SPELL_EXECUTE = "Execute",
@@ -43,8 +47,10 @@ Shalamayne_Localization = {
     SPELL_WHIRLWIND = "Whirlwind",
     SPELL_BLOODTHIRST = "Bloodthirst",
     SPELL_BLOODRAGE = "Bloodrage",
+    SPELL_CLEAVE = "Cleave",
     SPELL_HEROIC_STRIKE = "Heroic Strike",
     SPELL_SUNDER_ARMOR = "Sunder Armor",
+    SPELL_SLAM = "Slam",
 
     COMBATLOG_ENEMY_DODGE_PATTERNS = {
       "was dodged by",
@@ -83,10 +89,14 @@ Shalamayne_Localization = {
     UI_HS_RAGE = "英勇打击怒气 >=",
     UI_AOE_ENEMIES = "AOE 敌人数量 >=",
     UI_SUNDER_HP = "破甲目标血量 >",
+    UI_FINISHER_EXECUTE_HP = "收尾斩杀目标血量 <",
 
     SPELL_BATTLE_STANCE = "战斗姿态",
     SPELL_DEFENSIVE_STANCE = "防御姿态",
     SPELL_BERSERKER_STANCE = "狂暴姿态",
+    STANCE_BATTLE_NAME = "战斗姿态",
+    STANCE_DEFENSIVE_NAME = "防御姿态",
+    STANCE_BERSERKER_NAME = "狂暴姿态",
     SPELL_OVERPOWER = "压制",
     SPELL_MORTAL_STRIKE = "致死打击",
     SPELL_EXECUTE = "斩杀",
@@ -94,8 +104,10 @@ Shalamayne_Localization = {
     SPELL_WHIRLWIND = "旋风斩",
     SPELL_BLOODTHIRST = "嗜血",
     SPELL_BLOODRAGE = "血性狂暴",
+    SPELL_CLEAVE = "顺劈斩",
     SPELL_HEROIC_STRIKE = "英勇打击",
     SPELL_SUNDER_ARMOR = "破甲攻击",
+    SPELL_SLAM = "猛击",
 
     COMBATLOG_ENEMY_DODGE_PATTERNS = {
       "躲闪了",
