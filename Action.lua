@@ -99,6 +99,10 @@ end
 function Shalamayne_Rotation_Arms.Decide(L, now)
   now = now or GetTime()
 
+  if not Shalamayne_Conditions.TargetExists() then
+    Shalamayne_Conditions.AutoTargetMelee()
+  end
+
   local rage = Shalamayne_Conditions.PlayerRage()
   local stance = Shalamayne_Conditions.GetStance()
   local inMelee = Shalamayne_Conditions.InMeleeRange(L)
@@ -108,13 +112,6 @@ function Shalamayne_Rotation_Arms.Decide(L, now)
   local sunderHp = (Shalamayne_Settings and Shalamayne_Settings.sunderArmorHp) or 1000
   local hsRage = (Shalamayne_Settings and Shalamayne_Settings.heroicStrikeRage) or 50
   local finisherHp = (Shalamayne_Settings and Shalamayne_Settings.finisherExecuteHp) or 50000
-
-  if not Shalamayne_Conditions.TargetExists() then
-    if not Shalamayne_Conditions.AutoTargetMelee() then
-      DebugHit("no_target", nil, now)
-      return
-    end
-  end
 
   if not (PlayerFrame and PlayerFrame.inCombat) then
     AttackTarget()

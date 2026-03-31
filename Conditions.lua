@@ -433,9 +433,14 @@ end
 -- Automatically target a nearby valid enemy in melee range (UnitXP)
 function Shalamayne_Conditions.AutoTargetMelee()
   local ok = pcall(UnitXP, "target", "nearestEnemy")
-  if not ok or not UnitExists("target") then return false end
+  if not ok or not UnitExists("target") then
+    TargetNearestEnemy()
+    return Shalamayne_Conditions.TargetExists() 
+  end
 
   local firstGuid = GetTargetGuid()
+  local skullGuid = nil
+  local crossGuid = nil
 
   for i = 1, Shalamayne_EnemyScanner.maxIterations do
     local currentGuid = GetTargetGuid()
@@ -445,12 +450,16 @@ function Shalamayne_Conditions.AutoTargetMelee()
       break
     end
 
-    local okDist, dist = pcall(UnitXP, "distanceBetween", "player", "target")
-    local inRange = (okDist and dist and dist <= Shalamayne_EnemyScanner.rangeYards)
-
-    -- If target is valid and in range, stop scanning and keep this target
-    if inRange and Shalamayne_Conditions.TargetExists() then
-      return true
+    if Shalamayne_Conditions.TargetExists() then
+      local mark = GetRaidTargetIndex and GetRaidTargetIndex("target") or 0
+      if mark == 8 then
+        skullGuid = currentGuid
+      elseif mark == 7 then
+        crossGuid = currentGuid
+      end
+      if skullGuid then
+        break
+      end
     end
 
     local okNext = pcall(UnitXP, "target", "nextEnemyConsideringDistance")
@@ -460,6 +469,20 @@ function Shalamayne_Conditions.AutoTargetMelee()
     if not okNext then
       break
     end
+  end
+
+  if skullGuid then
+    TargetUnit(skullGuid)
+    return Shalamayne_Conditions.TargetExists()
+  end
+  if crossGuid then
+    TargetUnit(crossGuid)
+    return Shalamayne_Conditions.TargetExists()
+  end
+
+  if TargetNearestEnemy then
+    TargetNearestEnemy()
+    return Shalamayne_Conditions.TargetExists()
   end
 
   ClearTarget()
