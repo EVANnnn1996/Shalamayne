@@ -587,9 +587,6 @@ end
 -- Spell cooldown check by spellbook slot.
 function Shalamayne_Conditions.IsSpellReady(spellName, now)
   now = now or GetTime()
-  if not Shalamayne_Conditions.IsSpellKnown(spellName) then
-    return false
-  end
   local spellId = GetSpellIdFromName(spellName)
   if IsSpellOnCooldown(spellId, spellName, true) then
     return false
@@ -601,16 +598,12 @@ end
 function Shalamayne_Conditions.CanUseSpell(spellName, now)
   now = now or GetTime()
 
-  if not Shalamayne_Conditions.IsSpellKnown(spellName) then
-    return false
-  end
-
   local spellId = GetSpellIdFromName(spellName)
   if IsSpellOnCooldown(spellId, spellName, true) then
     return false
   end
 
-  local usable, noResource = IsSpellUsableWrapper(spellId, spellName)
+  local usable, _ = IsSpellUsableWrapper(spellId, spellName)
   if usable ~= nil then
     if noResource then return false end
     return usable ~= 0
@@ -632,10 +625,6 @@ end
 -- Returns an approximate enemy count for AoE decisions.
 -- This implementation uses UnitXP target cycling and restores the original target afterwards.
 function Shalamayne_Conditions.EnemiesInRange()
-  local settings = Shalamayne_Settings or {}
-  if settings.enemyCountOverride and settings.enemyCountOverride > 0 then
-    return settings.enemyCountOverride
-  end
   local ok, count = pcall(Shalamayne_EnemyScanner.CountEnemiesInMelee)
   if ok and type(count) == "number" then
     return count

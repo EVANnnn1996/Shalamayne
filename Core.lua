@@ -479,7 +479,7 @@ frame:SetScript("OnEvent", function()
 
   if event == "CHAT_MSG_SPELL_SELF_DAMAGE" then
     local msg = arg1 or ""
-    if string.find(msg, "你的破甲") or string.find(msg, "Your Sunder Armor") then
+    if string.find(msg, "你的破甲") or string.find(msg, "by Sunder Armor") then
       local guid = nil
       local s, e = string.find(msg, "0x" .. string.rep("%x", 16))
       if s then
@@ -497,6 +497,13 @@ frame:SetScript("OnEvent", function()
       end
     end
     return
+  end
+
+  if event == "UNIT_CASTEVENT" then
+    if arg4 == 11597 then
+      _, guid = UnitExists("target")
+      Shalamayne_State.sunderOnceByGuid[guid] = GetTime()
+    end
   end
 
   if event == "BUFF_ADDED_SELF" or event == "BUFF_REMOVED_SELF" then

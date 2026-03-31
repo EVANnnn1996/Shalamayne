@@ -119,9 +119,9 @@ function Shalamayne_Rotation_Arms.Decide(L, now)
 
   local function Cond(spellName, hasCd, minRage, maxRage)
     if hasCd and not Shalamayne_Conditions.IsSpellReady(spellName, now) then return false end
-    if minRage and rage < minRage then return false end
-    if maxRage and rage >= maxRage then return false end
-    return Shalamayne_Conditions.CanUseSpell(spellName, now)
+    -- if minRage and rage < minRage then return false end
+    -- if maxRage and rage >= maxRage then return false end
+    return true
   end
 
   local hasOp = Shalamayne_Conditions.HasOverpowerWindow(now)
@@ -173,28 +173,19 @@ function Shalamayne_Rotation_Arms.Decide(L, now)
         end
       end
     end
-
-    if enemyCount >= 2 and sweepRageGate then
+    if enemyCount >= 2 and sweepRageGate and Cond(L.SPELL_SWEEPING_STRIKES, true, 30) then
       if stance ~= 1 then
         DebugHit("stance_for_sweeping", L.SPELL_BATTLE_STANCE, now)
         QueueOrCast(L.SPELL_BATTLE_STANCE)
         return
       end
-      if Cond(L.SPELL_SWEEPING_STRIKES, true, 30) then
-        DebugHit("sweeping_strikes", L.SPELL_SWEEPING_STRIKES, now)
-        QueueOrCast(L.SPELL_SWEEPING_STRIKES)
-        return
-      end
+      DebugHit("sweeping_strikes", L.SPELL_SWEEPING_STRIKES, now)
+      QueueOrCast(L.SPELL_SWEEPING_STRIKES)
     end
 
     if inMelee and hpAbs > sunderHp and Shalamayne_Conditions.TargetSunderArmorStacks() < 5 and Cond(L.SPELL_SUNDER_ARMOR, true) then
       local _, guid = UnitExists("target")
       if not (guid and Shalamayne_State.sunderOnceByGuid and Shalamayne_State.sunderOnceByGuid[guid]) then
-        if stance ~= 3 then
-          DebugHit("stance_for_sunder", L.SPELL_BERSERKER_STANCE, now)
-          QueueOrCast(L.SPELL_BERSERKER_STANCE)
-          return
-        end
         DebugHit("sunder_once", L.SPELL_SUNDER_ARMOR, now)
         QueueOrCast(L.SPELL_SUNDER_ARMOR)
         return
@@ -258,11 +249,6 @@ function Shalamayne_Rotation_Arms.Decide(L, now)
     if inMelee and hpAbs > sunderHp and Shalamayne_Conditions.TargetSunderArmorStacks() < 5 and Cond(L.SPELL_SUNDER_ARMOR, true) then
       local _, guid = UnitExists("target")
       if not (guid and Shalamayne_State.sunderOnceByGuid and Shalamayne_State.sunderOnceByGuid[guid]) then
-        if stance ~= 3 then
-          DebugHit("stance_for_sunder", L.SPELL_BERSERKER_STANCE, now)
-          QueueOrCast(L.SPELL_BERSERKER_STANCE)
-          return
-        end
         DebugHit("sunder_once", L.SPELL_SUNDER_ARMOR, now)
         QueueOrCast(L.SPELL_SUNDER_ARMOR)
         return
@@ -302,22 +288,12 @@ function Shalamayne_Rotation_Arms.Decide(L, now)
     end
 
     if inMelee and hpPct > 0 and hpPct < 20 and Cond(L.SPELL_EXECUTE, true) then
-      if stance ~= 3 then
-        DebugHit("stance_for_execute", L.SPELL_BERSERKER_STANCE, now)
-        QueueOrCast(L.SPELL_BERSERKER_STANCE)
-        return
-      end
       DebugHit("execute", L.SPELL_EXECUTE, now)
       QueueOrCast(L.SPELL_EXECUTE)
       return
     end
 
-    if inMelee and Cond(L.SPELL_HEROIC_STRIKE, false, hsRage) then
-      if stance == 2 then
-        DebugHit("stance_for_heroic_strike", L.SPELL_BERSERKER_STANCE, now)
-        QueueOrCast(L.SPELL_BERSERKER_STANCE)
-        return
-      end
+    if inMelee and rage > 60 and Cond(L.SPELL_HEROIC_STRIKE, false, hsRage) then
       DebugHit("heroic_strike", L.SPELL_HEROIC_STRIKE, now)
       QueueOrCast(L.SPELL_HEROIC_STRIKE)
       return
