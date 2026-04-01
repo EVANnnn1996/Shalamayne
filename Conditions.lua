@@ -23,20 +23,17 @@ local function GetUnitGuid(unit)
   return nil
 end
 
-local Shalamayne_NP = {
-  spellIdCache = {},
-}
+local spellIdCache = {}
 
 local function GetSpellIdFromName(spellName)
   if not spellName then return nil end
-  local cache = Shalamayne_NP.spellIdCache
-  if cache[spellName] then
-    return cache[spellName]
+  if spellIdCache[spellName] then
+    return spellIdCache[spellName]
   end
   if GetSpellIdForName then
     local spellId = GetSpellIdForName(spellName)
     if spellId and spellId > 0 then
-      cache[spellName] = spellId
+      spellIdCache[spellName] = spellId
       return spellId
     end
   end
@@ -106,19 +103,6 @@ local function IsSpellOnCooldown(spellId, spellName, ignoreGCD)
   return info.isOnCooldown == 1
 end
 
-local function IsSpellUsableWrapper(spellId, spellName)
-  if not IsSpellUsable then
-    return nil
-  end
-  local ok, usable, oom
-  if spellId and spellId > 0 then
-    ok, usable, oom = pcall(IsSpellUsable, spellId)
-    if ok then return usable, oom end
-  end
-  ok, usable, oom = pcall(IsSpellUsable, spellName)
-  if ok then return usable, oom end
-  return nil
-end
 
 local function GetUnitAuras(unitToken)
   if not GetUnitField then return nil end
@@ -153,15 +137,10 @@ local function FindUnitAuraInfo(unitToken, searchSpellId, searchNameLower)
   return false
 end
 
--- Wipe all keys from a table
-local function Wipe(t)
-  for k in pairs(t) do t[k] = nil end
-end
-
 -- Scan the spellbook and cache the spell name to slot index mappings
 function Shalamayne_Spellbook.Scan()
   local cache = Shalamayne_Spellbook.slotByName
-  Wipe(cache)
+  for k in pairs(cache) do cache[k] = nil end
 
   local numTabs = GetNumSpellTabs and GetNumSpellTabs() or 0
   for tab = 1, numTabs do
@@ -576,14 +555,6 @@ function Shalamayne_Conditions.OffhandSwingRemaining(now)
   return duration - elapsed
 end
 
--- Spell known check via cached spellbook slot.
-function Shalamayne_Conditions.IsSpellKnown(spellName)
-  local slot = GetSpellSlotInfo(spellName)
-  if slot then return true end
-  local sid = GetSpellIdFromName(spellName)
-  return sid ~= nil
-end
-
 -- Spell cooldown check by spellbook slot.
 function Shalamayne_Conditions.IsSpellReady(spellName, now)
   now = now or GetTime()
@@ -594,87 +565,38 @@ function Shalamayne_Conditions.IsSpellReady(spellName, now)
   return true
 end
 
--- Full usability check: cooldown + resource requirements.
-function Shalamayne_Conditions.CanUseSpell(spellName, now)
-  now = now or GetTime()
-
-  local spellId = GetSpellIdFromName(spellName)
-  if IsSpellOnCooldown(spellId, spellName, true) then
-    return false
-  end
-
-  local usable, _ = IsSpellUsableWrapper(spellId, spellName)
-  if usable ~= nil then
-    if noResource then return false end
-    return usable ~= 0
-  end
-
-  if spellId and GetSpellRecField then
-    local okCost, cost = pcall(GetSpellRecField, spellId, "manaCost")
-    if okCost and cost and cost > 0 then
-      local power = UnitMana("player") or 0
-      if power < cost then
-        return false
-      end
-    end
-  end
-
-  return true
-end
-
--- Returns an approximate enemy count for AoE decisions.
--- This implementation uses UnitXP target cycling and restores the original target afterwards.
-function Shalamayne_Conditions.EnemiesInRange()
-  local ok, count = pcall(Shalamayne_EnemyScanner.CountEnemiesInMelee)
-  if ok and type(count) == "number" then
-    return count
-  end
-  return 1
-end
-
-function Shalamayne_Conditions.EnemyGuidsInMelee(rangeYards)
-  if Shalamayne_EnemyScanner and Shalamayne_EnemyScanner.GetEnemyGuidsInRange then
-    return Shalamayne_EnemyScanner.GetEnemyGuidsInRange(rangeYards)
-  end
-  return {}
-end
-
--- Checks if the target has a specific debuff by name
-function Shalamayne_Conditions.TargetHasDebuff(debuffName)
-  if not Shalamayne_Conditions.TargetExists() then return false end
-  local searchId = GetSpellIdFromName(debuffName)
-  local searchLower = string.lower(StripRank(debuffName))
-  local found = FindUnitAuraInfo("target", searchId, searchLower)
-  if found ~= nil then
-    return found and true or false
-  end
-  local i = 1
-  while true do
-    local texture, stacks = UnitDebuff("target", i)
-    local name = texture
-    if not name then break end
-    
-    -- In 1.12 UnitDebuff returns the texture path, we do a basic string match
-    -- Usually debuffName is the spell name, so this is a simplified fallback
-    -- Note: extensions might provide a better UnitDebuff wrapper returning names.
-    -- Here we use the texture path as a simple heuristic if it contains the name (lowercased, spaces removed)
-    -- A more robust way in 1.12 without extensions is scanning tooltip, but for Sunder Armor,
-    -- checking for the known texture "Ability_Warrior_Sunder" is standard.
-    
-    local textureStr = string.lower(name)
-    local searchStr = string.lower(string.gsub(debuffName, "%s+", ""))
-    if string.find(textureStr, searchStr) then
+function Shalamayne_Conditions.IsSpellQueued(spellName)
+  if GetCurrentCastingInfo then
+    local _, _, _, _, _, onswing = GetCurrentCastingInfo()
+    if onswing == 1 then
       return true
     end
-    -- Specifically for Sunder Armor
-    if debuffName == "Sunder Armor" or debuffName == "破甲攻击" then
-      if string.find(textureStr, "ability_warrior_sunder") then
-        return true
+  end
+
+  return false
+end
+
+-- Returns an approximate enemy count for AoE decisions and a table of low HP enemies (HP < 20%).
+function Shalamayne_Conditions.GetEnemiesInfoInRange()
+  local hpTable = {}
+  local ok, count = pcall(Shalamayne_EnemyScanner.CountEnemiesInMelee)
+  if not ok then return 1, hpTable end
+  if type(count) ~= "number" then count = 1 end
+
+  if Shalamayne_EnemyScanner and Shalamayne_EnemyScanner.knownEnemyGuids then
+    for guid in pairs(Shalamayne_EnemyScanner.knownEnemyGuids) do
+      if UnitExists(guid) and UnitCanAttack("player", guid) and not UnitIsDead(guid) then
+        local maxHp = UnitHealthMax(guid) or 0
+        if maxHp > 0 then
+          local hpPct = (UnitHealth(guid) or 0) / maxHp
+          if hpPct > 0 and hpPct < 0.2 then
+            hpTable[guid] = hpPct
+          end
+        end
       end
     end
-    i = i + 1
   end
-  return false
+  return count, hpTable
 end
 
 -- Get Sunder Armor stacks on target (0..5).

@@ -33,6 +33,7 @@ Shalamayne_Localization = {
     UI_AOE_ENEMIES = "AoE enemies >=",
     UI_SUNDER_HP = "Sunder Armor HP >",
     UI_FINISHER_EXECUTE_HP = "Finisher Execute HP <",
+    UI_SLAM_SWING_PCT = "Slam Swing Threshold >=",
 
     SPELL_BATTLE_STANCE = "Battle Stance",
     SPELL_DEFENSIVE_STANCE = "Defensive Stance",
@@ -90,6 +91,7 @@ Shalamayne_Localization = {
     UI_AOE_ENEMIES = "AOE 敌人数量 >=",
     UI_SUNDER_HP = "破甲目标血量 >",
     UI_FINISHER_EXECUTE_HP = "收尾斩杀目标血量 <",
+    UI_SLAM_SWING_PCT = "猛击平砍阈值(0~1) >=",
 
     SPELL_BATTLE_STANCE = "战斗姿态",
     SPELL_DEFENSIVE_STANCE = "防御姿态",

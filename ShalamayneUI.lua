@@ -105,7 +105,17 @@ local function CreateFrameOnce(L)
   finBox:SetPoint("TOPLEFT", f, "TOPLEFT", 150, -200)
   finBox:SetNumeric(true)
 
-  local btnApply = CreateButton(f, "Apply", 240, -200, 90)
+  local slamLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  slamLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -226)
+  slamLabel:SetText(L.UI_SLAM_SWING_PCT)
+  local slamBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+  slamBox:SetAutoFocus(false)
+  slamBox:SetWidth(40)
+  slamBox:SetHeight(18)
+  slamBox:SetPoint("TOPLEFT", f, "TOPLEFT", 150, -224)
+  slamBox:SetNumeric(false) -- Allow decimals
+
+  local btnApply = CreateButton(f, "Apply", 240, -224, 90)
 
   -- Refresh UI elements to match current settings
   local function Refresh()
@@ -115,6 +125,7 @@ local function CreateFrameOnce(L)
     aoeBox:SetNumber(Shalamayne_Settings.aoeEnemies or 2)
     sunderBox:SetNumber(Shalamayne_Settings.sunderArmorHp or 1000)
     finBox:SetNumber(Shalamayne_Settings.finisherExecuteHp or 50000)
+    slamBox:SetText(tostring(Shalamayne_Settings.slamSwingThreshold or 0.5))
   end
 
   cbEnabled:SetScript("OnClick", function() Shalamayne_Settings.enabled = cbEnabled:GetChecked() == 1 end)
@@ -135,6 +146,7 @@ local function CreateFrameOnce(L)
     Shalamayne_Settings.aoeEnemies = tonumber(aoeBox:GetText()) or 2
     Shalamayne_Settings.sunderArmorHp = tonumber(sunderBox:GetText()) or 1000
     Shalamayne_Settings.finisherExecuteHp = tonumber(finBox:GetText()) or 50000
+    Shalamayne_Settings.slamSwingThreshold = tonumber(slamBox:GetText()) or 0.5
     Refresh()
   end)
 

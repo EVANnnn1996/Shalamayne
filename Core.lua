@@ -25,6 +25,7 @@ local function EnsureDefaults()
   if Shalamayne_Settings.aoeEnemies == nil then Shalamayne_Settings.aoeEnemies = 2 end
   if Shalamayne_Settings.sunderArmorHp == nil then Shalamayne_Settings.sunderArmorHp = 1000 end
   if Shalamayne_Settings.finisherExecuteHp == nil then Shalamayne_Settings.finisherExecuteHp = 50000 end
+  if Shalamayne_Settings.slamSwingThreshold == nil then Shalamayne_Settings.slamSwingThreshold = 0.5 end
 end
 
 -- Compare version numbers
@@ -143,7 +144,11 @@ local function DecideAndAct(specOverride)
   local now = GetTime()
   local spec = specOverride or Shalamayne_Settings.spec
 
-  Shalamayne_Action.Decide(L, now, spec)
+  if spec == L.SPEC_FURY_KEY then
+    Shalamayne_Action.DecideFury(L, now)
+  else
+    Shalamayne_Action.DecideArms(L, now)
+  end
 end
 
 SLASH_SHALAMAYNE1 = "/shala"
@@ -153,7 +158,11 @@ SlashCmdList["SHALAMAYNE"] = function(msg)
   local _, _, cmd, rest = string.find(msg, "^(%S+)%s*(.*)$")
 
   if cmd == nil or cmd == "" then
-    DecideAndAct(nil)
+    if Shalamayne.disabled then
+      PrintError(table.concat(Shalamayne.disabledErrors or { "disabled" }, " "))
+      return
+    end
+    Shalamayne_ConfigUI.Show(L)
     return
   end
 
