@@ -323,13 +323,13 @@ frame:SetScript("OnEvent", function()
 
   if Shalamayne.disabled then return end
 
-  if event == "PLAYER_ENTER_COMBAT" or event == "PLAYER_REGEN_DISABLED" then
+  if event == "PLAYER_REGEN_DISABLED" then
     Shalamayne.inCombat = true
     Shalamayne.Scan()
     return
   end
 
-  if event == "PLAYER_LEAVE_COMBAT" or event == "PLAYER_REGEN_ENABLED" then
+  if event == "PLAYER_REGEN_ENABLED" then
     Shalamayne.inCombat = false
     Shalamayne.ResetCombat()
     return
@@ -382,14 +382,12 @@ frame:SetScript("OnEvent", function()
   end
 
   if event == "UNIT_CASTEVENT" then
-    if arg1 == "player" and arg2 == "START" and arg4 then
-      if arg4 == L.SPELL_OVERPOWER then
-        Shalamayne.overpowerUntil = 0
-        Shalamayne.overpowerTargetGuid = nil
-      elseif arg4 == 11597 then
-        local _, guid = UnitExists("target")
-        Shalamayne.sunderOnceByGuid[guid] = GetTime()
-      end
+    if arg4 == L.SPELL_OVERPOWER then
+      Shalamayne.overpowerUntil = 0
+      Shalamayne.overpowerTargetGuid = nil
+    elseif arg4 == 11597 then
+      local _, guid = UnitExists("target")
+      Shalamayne.sunderOnceByGuid[guid] = GetTime()
     end
     return
   end

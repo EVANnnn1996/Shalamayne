@@ -71,7 +71,7 @@ function Shalamayne.DecideArms(L, now)
   end
 
   local hasOp = Shalamayne.HasOverpowerWindow(now)
-  if stance ~= 3 and not ((hasOp and Shalamayne.IsSpellReady(L.SPELL_OVERPOWER, now)) or (enemyCount >= 2 and Shalamayne.IsSpellReady(L.SPELL_SWEEPING_STRIKES, now))) then
+  if stance ~= 3 and rage < 50 and not ((hasOp and Shalamayne.IsSpellReady(L.SPELL_OVERPOWER, now)) or (enemyCount >= 2 and Shalamayne.IsSpellReady(L.SPELL_SWEEPING_STRIKES, now))) then
     DebugHit("stance_berseker_default", L.SPELL_BERSERKER_STANCE, now)
     QueueOrCast(L.SPELL_BERSERKER_STANCE)
     return
@@ -242,8 +242,7 @@ function Shalamayne.DecideArms(L, now)
 
     if inMelee and Shalamayne.IsSpellReady(L.SPELL_SLAM, now) then
       local mhRem = Shalamayne.MainhandSwingRemaining()
-      local mhDur = Shalamayne.MainhandSwingDuration()
-      if mhDur > 0 and (mhRem / mhDur) >= slamThreshold then
+      if mhRem >= slamThreshold then
         DebugHit("slam", L.SPELL_SLAM, now)
         QueueOrCast(L.SPELL_SLAM)
         return

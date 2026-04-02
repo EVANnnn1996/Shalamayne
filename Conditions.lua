@@ -621,16 +621,10 @@ end
 
 -- Get mainhand swing timer remaining. Returns 0 if weapon is ready to swing.
 function Shalamayne.MainhandSwingRemaining()
-  if SP_ST_FrameTimer and SP_ST_FrameTimer.GetMainhandRemaining then
-    local rem = SP_ST_FrameTimer.GetMainhandRemaining()
-    if rem then return rem end
-  end
-  if SP_ST_GS and SP_ST_GS.maintimer then
-    -- Try to parse from the timer text if API is not available
-    local text = SP_ST_maintimer:GetText()
-    if text then
-      local rem = tonumber(text)
-      if rem then return rem end
+  if st_timer ~= nil then
+    local attackSpeed = st_timerMax or UnitAttackSpeed("player")
+    if attackSpeed and attackSpeed > 0 then
+        return ((attackSpeed - st_timer) / attackSpeed) * 100
     end
   end
   return 0
