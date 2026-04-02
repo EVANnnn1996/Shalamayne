@@ -1,9 +1,8 @@
 ## Interface: 11200
 ## Title: Shalamayne
-## Notes: Warrior one-button rotation for Turtle WoW (requires SuperWoW, Nampower, UnitXP)
-## Author: ChatGPT
-## Version: 0.1.0
-## SavedVariablesPerCharacter: Shalamayne_Settings
+## Notes: A streamlined 1.12 auto-rotation addon
+## SavedVariablesPerCharacter: Shalamayne
+## Dependencies: SP_SwingTimer
 
 Localization.lua
 Conditions.lua

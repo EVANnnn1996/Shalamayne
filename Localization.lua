@@ -56,6 +56,23 @@ Shalamayne_Localization = {
     COMBATLOG_ENEMY_DODGE_PATTERNS = {
       "was dodged by",
     },
+
+    ITEM_T3_HEAD = "Dreadnaught Helmet",
+    ITEM_T3_SHOULDER = "Dreadnaught Pauldrons",
+    ITEM_T3_CHEST = "Dreadnaught Breastplate",
+    ITEM_T3_WAIST = "Dreadnaught Waistguard",
+    ITEM_T3_LEGS = "Dreadnaught Legplates",
+    ITEM_T3_FEET = "Dreadnaught Sabatons",
+    ITEM_T3_WRIST = "Dreadnaught Bracers",
+    ITEM_T3_HANDS = "Dreadnaught Gauntlets",
+    ITEM_T3_RING = "Ring of Dreadnaught",
+
+    ITEM_T25_HEAD = "Conqueror's Crown",
+    ITEM_T25_NECK = "Conqueror's Spaulders", -- Note: Cat script uses this for neck slot
+    ITEM_T25_SHOULDER = "Conqueror's Spaulders",
+    ITEM_T25_CHEST = "Conqueror's Breastplate",
+    ITEM_T25_LEGS = "Conqueror's Legguards",
+    ITEM_T25_FEET = "Conqueror's Greaves",
   },
   zhCN = {
     ADDON_TITLE = "乌龟服战士一键输出",
@@ -115,6 +132,23 @@ Shalamayne_Localization = {
       "躲闪了",
       "被(.+)躲闪",
     },
+
+    ITEM_T3_HEAD = "无畏头盔",
+    ITEM_T3_SHOULDER = "无畏肩铠",
+    ITEM_T3_CHEST = "无畏胸甲",
+    ITEM_T3_WAIST = "无畏腰带",
+    ITEM_T3_LEGS = "无畏腿铠",
+    ITEM_T3_FEET = "无畏马靴",
+    ITEM_T3_WRIST = "无畏护腕",
+    ITEM_T3_HANDS = "无畏护手",
+    ITEM_T3_RING = "无畏之戒",
+
+    ITEM_T25_HEAD = "征服者的皇冠",
+    ITEM_T25_NECK = "征服者的肩铠", -- Note: Cat script uses this for neck slot
+    ITEM_T25_SHOULDER = "征服者的肩铠",
+    ITEM_T25_CHEST = "征服者的胸甲",
+    ITEM_T25_LEGS = "征服者的腿铠",
+    ITEM_T25_FEET = "征服者的胫甲",
   },
 }
 

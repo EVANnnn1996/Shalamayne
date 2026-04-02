@@ -14,18 +14,18 @@ end
 
 -- Initialize default settings if they are missing
 local function EnsureDefaults()
-  if not Shalamayne_Settings then Shalamayne_Settings = {} end
-  if Shalamayne_Settings.enabled == nil then Shalamayne_Settings.enabled = true end
-  if Shalamayne_Settings.spec == nil then Shalamayne_Settings.spec = L.SPEC_ARMS_KEY end
-  if Shalamayne_Settings.debug == nil then Shalamayne_Settings.debug = false end
-  if Shalamayne_Settings.showMinimap == nil then Shalamayne_Settings.showMinimap = true end
-  if Shalamayne_Settings.minimapAngle == nil then Shalamayne_Settings.minimapAngle = 220 end
+  if not Shalamayne then Shalamayne = {} end
+  if Shalamayne.enabled == nil then Shalamayne.enabled = true end
+  if Shalamayne.spec == nil then Shalamayne.spec = L.SPEC_ARMS_KEY end
+  if Shalamayne.debug == nil then Shalamayne.debug = false end
+  if Shalamayne.showMinimap == nil then Shalamayne.showMinimap = true end
+  if Shalamayne.minimapAngle == nil then Shalamayne.minimapAngle = 220 end
 
-  if Shalamayne_Settings.heroicStrikeRage == nil then Shalamayne_Settings.heroicStrikeRage = 50 end
-  if Shalamayne_Settings.aoeEnemies == nil then Shalamayne_Settings.aoeEnemies = 2 end
-  if Shalamayne_Settings.sunderArmorHp == nil then Shalamayne_Settings.sunderArmorHp = 1000 end
-  if Shalamayne_Settings.finisherExecuteHp == nil then Shalamayne_Settings.finisherExecuteHp = 50000 end
-  if Shalamayne_Settings.slamSwingThreshold == nil then Shalamayne_Settings.slamSwingThreshold = 0.5 end
+  if Shalamayne.heroicStrikeRage == nil then Shalamayne.heroicStrikeRage = 50 end
+  if Shalamayne.aoeEnemies == nil then Shalamayne.aoeEnemies = 2 end
+  if Shalamayne.sunderArmorHp == nil then Shalamayne.sunderArmorHp = 1000 end
+  if Shalamayne.finisherExecuteHp == nil then Shalamayne.finisherExecuteHp = 50000 end
+  if Shalamayne.slamSwingThreshold == nil then Shalamayne.slamSwingThreshold = 0.5 end
 end
 
 -- Compare version numbers
@@ -117,20 +117,20 @@ function Shalamayne_ToggleEnabled()
     PrintError(table.concat(Shalamayne.disabledErrors or { "disabled" }, " "))
     return
   end
-  Shalamayne_Settings.enabled = not Shalamayne_Settings.enabled
-  Print((Shalamayne_Settings.enabled and L.STATUS_ENABLED) or L.STATUS_DISABLED)
+  Shalamayne.enabled = not Shalamayne.enabled
+  Print((Shalamayne.enabled and L.STATUS_ENABLED) or L.STATUS_DISABLED)
 end
 
 -- Set the current specialization (Arms or Fury)
 local function SetSpec(specKey)
   if specKey == L.SPEC_ARMS_KEY or specKey == L.SPEC_FURY_KEY then
-    Shalamayne_Settings.spec = specKey
+    Shalamayne.spec = specKey
   end
 end
 
 -- Get a human-readable label for the current spec
 local function SpecLabel()
-  if Shalamayne_Settings.spec == L.SPEC_FURY_KEY then return L.SPEC_FURY end
+  if Shalamayne.spec == L.SPEC_FURY_KEY then return L.SPEC_FURY end
   return L.SPEC_ARMS
 end
 
@@ -142,12 +142,12 @@ local function DecideAndAct(specOverride)
   end
 
   local now = GetTime()
-  local spec = specOverride or Shalamayne_Settings.spec
+  local spec = specOverride or Shalamayne.spec
 
   if spec == L.SPEC_FURY_KEY then
-    Shalamayne_Action.DecideFury(L, now)
+    Shalamayne.DecideFury(L, now)
   else
-    Shalamayne_Action.DecideArms(L, now)
+    Shalamayne.DecideArms(L, now)
   end
 end
 
@@ -162,7 +162,7 @@ SlashCmdList["SHALAMAYNE"] = function(msg)
       PrintError(table.concat(Shalamayne.disabledErrors or { "disabled" }, " "))
       return
     end
-    Shalamayne_ConfigUI.Show(L)
+    Shalamayne.ShowConfig(L)
     return
   end
 
@@ -192,12 +192,12 @@ SlashCmdList["SHALAMAYNE"] = function(msg)
       PrintError(table.concat(Shalamayne.disabledErrors or { "disabled" }, " "))
       return
     end
-    Shalamayne_Settings.debug = not Shalamayne_Settings.debug
-    if Shalamayne_Settings.debug then
-      Shalamayne_DebugUI.Show(L)
+    Shalamayne.debug = not Shalamayne.debug
+    if Shalamayne.debug then
+      Shalamayne.ShowDebug(L)
       Print(L.STATUS_DEBUG .. ": on")
     else
-      Shalamayne_DebugUI.Hide()
+      Shalamayne.HideDebug()
       Print(L.STATUS_DEBUG .. ": off")
     end
     return
@@ -207,26 +207,22 @@ SlashCmdList["SHALAMAYNE"] = function(msg)
       PrintError(table.concat(Shalamayne.disabledErrors or { "disabled" }, " "))
       return
     end
-    Shalamayne_ConfigUI.Show(L)
+    Shalamayne.ShowConfig(L)
     return
   end
   if cmd == "minimap" then
-    if not Shalamayne_Settings then Shalamayne_Settings = {} end
-    if Shalamayne_Settings.showMinimap == nil then
-      Shalamayne_Settings.showMinimap = false
-    else
-      Shalamayne_Settings.showMinimap = not Shalamayne_Settings.showMinimap
+    if not Shalamayne then Shalamayne = {} end
+    Shalamayne.showMinimap = not Shalamayne.showMinimap
+    if Shalamayne and Shalamayne.Refresh then
+      Shalamayne.Refresh(L)
     end
-    if Shalamayne_Minimap and Shalamayne_Minimap.Refresh then
-      Shalamayne_Minimap.Refresh(L)
-    end
-    Print("Minimap: " .. tostring(Shalamayne_Settings.showMinimap))
+    Print("Minimap: " .. tostring(Shalamayne.showMinimap))
     return
   end
   if cmd == "status" then
     Print(L.STATUS_SPEC .. ": " .. SpecLabel())
-    Print(L.STATUS_ENABLED .. ": " .. tostring(Shalamayne_Settings.enabled))
-    Print(L.STATUS_DEBUG .. ": " .. tostring(Shalamayne_Settings.debug))
+    Print(L.STATUS_ENABLED .. ": " .. tostring(Shalamayne.enabled))
+    Print(L.STATUS_DEBUG .. ": " .. tostring(Shalamayne.debug))
     if Shalamayne.caps then
       local u = Shalamayne.caps.unitxpCompileTime
       local ud = u and date("%Y-%m-%d", u) or "?"
@@ -244,105 +240,17 @@ local frame = CreateFrame("Frame", "Shalamayne_Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_REGEN_DISABLED")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+frame:RegisterEvent("PLAYER_ENTER_COMBAT")
+frame:RegisterEvent("PLAYER_LEAVE_COMBAT")
 frame:RegisterEvent("PLAYER_TARGET_CHANGED")
 frame:RegisterEvent("SPELLS_CHANGED")
 frame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
-frame:RegisterEvent("RAW_COMBATLOG")
 frame:RegisterEvent("UNIT_CASTEVENT")
-frame:RegisterEvent("AUTO_ATTACK_SELF")
-frame:RegisterEvent("SPELL_GO_SELF")
 frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
-frame:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES")
-frame:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE")
-frame:RegisterEvent("CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES")
-frame:RegisterEvent("CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE")
+frame:RegisterEvent("CHARACTER_POINTS_CHANGED")
+frame:RegisterEvent("CHAT_MSG_COMBAT_SELF_MISSES")
 frame:RegisterEvent("CHAT_MSG_SPELL_SELF_DAMAGE")
-frame:RegisterEvent("BUFF_ADDED_SELF")
-frame:RegisterEvent("BUFF_REMOVED_SELF")
 
-local Swing = {}
-Swing.HITINFO_LEFTSWING = 4
-Swing.HITINFO_NOACTION = 65536
-
-Swing.hsSpellIDs = {[78]=true, [284]=true, [285]=true, [1608]=true, [11564]=true, [11565]=true, [11566]=true, [11567]=true, [25286]=true}
-Swing.cleaveSpellIDs = {[845]=true, [7369]=true, [11608]=true, [11609]=true, [20569]=true}
-Swing.slamSpellIDs = {[1464]=true, [8820]=true, [11604]=true, [11605]=true, [25241]=true}
-
-function Swing.UpdateDurations(keepProgress)
-  local now = GetTime()
-  local speedMH, speedOH = UnitAttackSpeed("player")
-
-  if speedMH and speedMH > 0 then
-    if keepProgress and Shalamayne_State.mainhandSwingDuration and Shalamayne_State.mainhandSwingDuration > 0 then
-      local old = Shalamayne_State.mainhandSwingDuration
-      local elapsed = now - (Shalamayne_State.mainhandSwingTime or now)
-      local pct = elapsed / old
-      if pct < 0 then pct = 0 end
-      if pct > 1 then pct = 1 end
-      Shalamayne_State.mainhandSwingDuration = speedMH
-      Shalamayne_State.mainhandSwingTime = now - (pct * speedMH)
-    else
-      Shalamayne_State.mainhandSwingDuration = speedMH
-    end
-  end
-
-  if speedOH and speedOH > 0 then
-    if keepProgress and Shalamayne_State.offhandSwingDuration and Shalamayne_State.offhandSwingDuration > 0 then
-      local old = Shalamayne_State.offhandSwingDuration
-      local elapsed = now - (Shalamayne_State.offhandSwingTime or now)
-      local pct = elapsed / old
-      if pct < 0 then pct = 0 end
-      if pct > 1 then pct = 1 end
-      Shalamayne_State.offhandSwingDuration = speedOH
-      Shalamayne_State.offhandSwingTime = now - (pct * speedOH)
-    else
-      Shalamayne_State.offhandSwingDuration = speedOH
-    end
-  end
-end
-
-function Swing.ApplyParryHaste()
-  local now = GetTime()
-
-  local function ReduceTimer(swingTimeKey, durationKey)
-    local swingTime = Shalamayne_State[swingTimeKey] or 0
-    local duration = Shalamayne_State[durationKey] or 0
-    if duration <= 0 then return end
-
-    local elapsed = now - swingTime
-    local remaining = duration - elapsed
-    if remaining <= 0 then return end
-
-    local minimum = duration * 0.20
-    local reduct = duration * 0.40
-    local newRemaining = remaining - reduct
-    if newRemaining < minimum then
-      newRemaining = minimum
-    end
-
-    Shalamayne_State[swingTimeKey] = now - (duration - newRemaining)
-  end
-
-  local mhRem = Shalamayne_Conditions and Shalamayne_Conditions.MainhandSwingRemaining and Shalamayne_Conditions.MainhandSwingRemaining(now) or 0
-  local ohRem = Shalamayne_Conditions and Shalamayne_Conditions.OffhandSwingRemaining and Shalamayne_Conditions.OffhandSwingRemaining(now) or 0
-
-  if ohRem > 0 and (mhRem == 0 or ohRem < mhRem) then
-    ReduceTimer("offhandSwingTime", "offhandSwingDuration")
-  else
-    ReduceTimer("mainhandSwingTime", "mainhandSwingDuration")
-  end
-end
-
-function Swing.IsParryHasteMessage(msg)
-  if not msg then return false end
-  if string.find(msg, " attacks%. You parry%.") then return true end
-  if string.find(msg, " was parried%.") then return true end
-  if string.find(msg, "攻击%. 你招架了") then return true end
-  if string.find(msg, "被招架") then return true end
-  return false
-end
-
--- Handle combat log events (e.g., detecting dodges for Overpower)
 local function OnCombatLog(L, msg)
   if not msg or msg == "" then return end
 
@@ -358,9 +266,11 @@ local function OnCombatLog(L, msg)
   for _, p in ipairs(patterns) do
     if string.find(msg, p) then
       local window = 4.0
-      Shalamayne_State.overpowerUntil = GetTime() + window
-      if Shalamayne_Settings.debug then
-        Shalamayne_DebugUI.PushLine("Overpower proc: " .. msg)
+      local _, guid = UnitExists("target")
+      Shalamayne.overpowerUntil = GetTime() + window
+      Shalamayne.overpowerTargetGuid = guid
+      if Shalamayne.debug then
+        Shalamayne.PushLine("Overpower proc: " .. msg)
       end
       return
     end
@@ -373,7 +283,10 @@ frame:SetScript("OnEvent", function()
     if arg1 ~= "Shalamayne" then return end
 
     EnsureDefaults()
-    Shalamayne_Spellbook.Scan()
+    Shalamayne.Scan()
+    if Shalamayne and Shalamayne.RefreshWarriorState then
+      Shalamayne.RefreshWarriorState(L)
+    end
 
     local ok, errors, caps = CheckRequirements(L)
     Shalamayne.caps = caps
@@ -397,13 +310,11 @@ frame:SetScript("OnEvent", function()
       SetCVar("NP_EnableSpellGoEvents", "1")
     end
 
-    Swing.UpdateDurations(false)
-    if Shalamayne_Settings.debug then
-      Shalamayne_DebugUI.Show(L)
+    if Shalamayne.debug then
+      Shalamayne.ShowDebug(L)
     end
 
-
-    Shalamayne_Minimap.Refresh(L)
+    Shalamayne.Refresh(L)
 
     Print(L.LOADED_OK)
     Print(L.CMD_HELP)
@@ -412,77 +323,39 @@ frame:SetScript("OnEvent", function()
 
   if Shalamayne.disabled then return end
 
-  if event == "PLAYER_REGEN_DISABLED" then
-    Shalamayne_State.inCombat = true
-    Shalamayne_Spellbook.Scan()
-    if not Shalamayne_State.mainhandSwingTime or Shalamayne_State.mainhandSwingTime == 0 then
-      Shalamayne_State.mainhandSwingTime = GetTime()
-      Swing.UpdateDurations(false)
+  if event == "PLAYER_ENTER_COMBAT" or event == "PLAYER_REGEN_DISABLED" then
+    Shalamayne.inCombat = true
+    Shalamayne.Scan()
+    return
+  end
+
+  if event == "PLAYER_LEAVE_COMBAT" or event == "PLAYER_REGEN_ENABLED" then
+    Shalamayne.inCombat = false
+    Shalamayne.ResetCombat()
+    return
+  end
+
+  if event == "SPELLS_CHANGED" or event == "CHARACTER_POINTS_CHANGED" then
+    if Shalamayne then
+      Shalamayne.Scan()
+    end
+    if Shalamayne and Shalamayne.RefreshWarriorState then
+      Shalamayne.RefreshWarriorState(L)
     end
     return
   end
 
-  if event == "PLAYER_REGEN_ENABLED" then
-    Shalamayne_State.inCombat = false
-    Shalamayne_State.ResetCombat()
-    return
-  end
-
-  if event == "SPELLS_CHANGED" then
-    Shalamayne_Spellbook.Scan()
-    return
-  end
-
-  if event == "RAW_COMBATLOG" then
-    OnCombatLog(L, arg1)
-    return
-  end
-
-  if event == "AUTO_ATTACK_SELF" then
-    -- SuperWoW's AUTO_ATTACK_SELF event passes the hitInfo bitfield in arg4.
-    local hitInfo = arg4
-    if not hitInfo then return end
-
-    if math.mod(math.floor(hitInfo / Swing.HITINFO_NOACTION), 2) ~= 0 then
-      return
-    end
-
-    local offhand = math.mod(math.floor(hitInfo / Swing.HITINFO_LEFTSWING), 2) ~= 0
-    local speedMH, speedOH = UnitAttackSpeed("player")
-    local now = GetTime()
-
-    if offhand then
-      Shalamayne_State.offhandSwingTime = now
-      Shalamayne_State.offhandSwingDuration = speedOH or 2.0
-    else
-      Shalamayne_State.mainhandSwingTime = now
-      Shalamayne_State.mainhandSwingDuration = speedMH or 2.0
+  if event == "UNIT_INVENTORY_CHANGED" and arg1 == "player" then
+    if Shalamayne and Shalamayne.RefreshWarriorState then
+      Shalamayne.RefreshWarriorState(L)
     end
     return
   end
 
-  if event == "SPELL_GO_SELF" then
-    local spellId = arg2
-    if not spellId then return end
-    if Swing.hsSpellIDs[spellId] or Swing.cleaveSpellIDs[spellId] or Swing.slamSpellIDs[spellId] then
-      local speedMH, _ = UnitAttackSpeed("player")
-      Shalamayne_State.mainhandSwingTime = GetTime()
-      Shalamayne_State.mainhandSwingDuration = speedMH or 2.0
-    end
-    return
-  end
 
-  if event == "UNIT_INVENTORY_CHANGED" then
-    if arg1 == "player" then
-      Swing.UpdateDurations(true)
-    end
-    return
-  end
-
-  if event == "CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES" or event == "CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE" or event == "CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES" or event == "CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE" then
-    if Swing.IsParryHasteMessage(arg1) then
-      Swing.ApplyParryHaste()
-    end
+  if event == "CHAT_MSG_COMBAT_SELF_MISSES" then
+    local msg = arg1 or ""
+    OnCombatLog(L, msg)
     return
   end
 
@@ -499,8 +372,8 @@ frame:SetScript("OnEvent", function()
       if guid then
         if string.find(msg, "招架") or string.find(msg, "躲闪") or string.find(msg, "格挡") or string.find(msg, "没有击中") or string.find(msg, "免疫") or string.find(msg, "抵抗") or string.find(msg, "parried") or string.find(msg, "dodged") or string.find(msg, "blocked") or string.find(msg, "miss") or string.find(msg, "immune") or string.find(msg, "resist") then
         else
-          if Shalamayne_State.sunderOnceByGuid then
-            Shalamayne_State.sunderOnceByGuid[guid] = GetTime()
+          if Shalamayne.sunderOnceByGuid then
+            Shalamayne.sunderOnceByGuid[guid] = GetTime()
           end
         end
       end
@@ -509,29 +382,13 @@ frame:SetScript("OnEvent", function()
   end
 
   if event == "UNIT_CASTEVENT" then
-    if arg4 == 11597 then
-      _, guid = UnitExists("target")
-      Shalamayne_State.sunderOnceByGuid[guid] = GetTime()
-    end
-  end
-
-  if event == "BUFF_ADDED_SELF" or event == "BUFF_REMOVED_SELF" then
-    local spellId = arg3
-    if not spellId then return end
-    local okName, name = pcall(GetSpellNameAndRankForId, spellId)
-    if not okName or not name then return end
-    if name == "Flurry" or name == "乱舞" then
-      Swing.UpdateDurations(true)
-    end
-    return
-  end
-
-  if event == "UNIT_CASTEVENT" then
     if arg1 == "player" and arg2 == "START" and arg4 then
-      Shalamayne_State.lastCastSpell = arg4
-      Shalamayne_State.lastCastAt = GetTime()
       if arg4 == L.SPELL_OVERPOWER then
-        Shalamayne_State.overpowerUntil = 0
+        Shalamayne.overpowerUntil = 0
+        Shalamayne.overpowerTargetGuid = nil
+      elseif arg4 == 11597 then
+        local _, guid = UnitExists("target")
+        Shalamayne.sunderOnceByGuid[guid] = GetTime()
       end
     end
     return

@@ -1,7 +1,6 @@
-Shalamayne_Spellbook = {
-  slotByName = {},
-  lastScanAt = 0,
-}
+Shalamayne = Shalamayne or {}
+Shalamayne.slotByName = {}
+Shalamayne.spellbookLastScanAt = 0
 
 local BOOKTYPE_SPELL = BOOKTYPE_SPELL or "spell"
 
@@ -48,7 +47,7 @@ local function GetSpellSlotInfo(spellName)
       return slot, bookType, spellId
     end
   end
-  local slot = Shalamayne_Spellbook.GetSlot(spellName)
+  local slot = Shalamayne.GetSlot(spellName)
   if slot then
     return slot, BOOKTYPE_SPELL, GetSpellIdFromName(spellName)
   end
@@ -64,7 +63,7 @@ local function GetSpellCooldownInfo(spellId, spellName)
   end
   local slot = nil
   if spellName then
-    slot = Shalamayne_Spellbook.GetSlot(spellName)
+    slot = Shalamayne.GetSlot(spellName)
   end
   if not slot and spellName then
     local s = GetSpellSlotInfo(spellName)
@@ -137,9 +136,87 @@ local function FindUnitAuraInfo(unitToken, searchSpellId, searchNameLower)
   return false
 end
 
+local function GetTalentRank(tabIndex, talentIndex)
+  local name, iconTexture, tier, column, rank, maxRank, isExceptional, meetsPrereq = GetTalentInfo(tabIndex, talentIndex)
+  return rank or 0
+end
+
+local function HasInventoryItem(slotIndex, itemNameMatch)
+  local link = GetInventoryItemLink("player", slotIndex)
+  if link and string.find(link, itemNameMatch) then
+    return true
+  end
+  return false
+end
+
+-- Refresh warrior state, including dynamic spell costs based on talents/gear
+function Shalamayne.RefreshWarriorState(L)
+  if not Shalamayne then return end
+
+  -- Default base costs
+  local costSunder = 10
+  local costWhirlwind = 25
+  local costHeroicStrike = 15
+  local costCleave = 15
+  local costExecute = 15
+  local costSweeping = 20
+
+  -- Execute cost reduction talent (tab 2, index 13)
+  local executeRank = GetTalentRank(2, 13)
+  if executeRank == 1 then
+    costExecute = costExecute - 2
+  elseif executeRank == 2 then
+    costExecute = costExecute - 5
+  end
+
+  -- Heroic Strike cost reduction talent (tab 1, index 1)
+  costHeroicStrike = costHeroicStrike - GetTalentRank(1, 1)
+
+  -- Cleave cost reduction talent (tab 2, index 11)
+  costCleave = costCleave - GetTalentRank(2, 11)
+
+  -- T3 set bonus (2 pieces) - reduces Sweeping Strikes cost
+  local t3Count = 0
+  if HasInventoryItem(1, L.ITEM_T3_HEAD) then t3Count = t3Count + 1 end
+  if HasInventoryItem(3, L.ITEM_T3_SHOULDER) then t3Count = t3Count + 1 end
+  if HasInventoryItem(5, L.ITEM_T3_CHEST) then t3Count = t3Count + 1 end
+  if HasInventoryItem(6, L.ITEM_T3_WAIST) then t3Count = t3Count + 1 end
+  if HasInventoryItem(7, L.ITEM_T3_LEGS) then t3Count = t3Count + 1 end
+  if HasInventoryItem(8, L.ITEM_T3_FEET) then t3Count = t3Count + 1 end
+  if HasInventoryItem(9, L.ITEM_T3_WRIST) then t3Count = t3Count + 1 end
+  if HasInventoryItem(10, L.ITEM_T3_HANDS) then t3Count = t3Count + 1 end
+  if HasInventoryItem(11, L.ITEM_T3_RING) then t3Count = t3Count + 1 end
+  if HasInventoryItem(12, L.ITEM_T3_RING) then t3Count = t3Count + 1 end
+  if t3Count >= 2 then
+    costSweeping = 10
+  end
+
+  -- T2.5 set bonus (3 pieces) - reduces Sunder Armor, Whirlwind, Heroic Strike cost by 3 (Cat says 5 but T2.5 is usually 3, we'll follow Cat script and subtract 5)
+  local t25Count = 0
+  if HasInventoryItem(1, L.ITEM_T25_HEAD) then t25Count = t25Count + 1 end
+  if HasInventoryItem(2, L.ITEM_T25_NECK) then t25Count = t25Count + 1 end
+  if HasInventoryItem(3, L.ITEM_T25_SHOULDER) then t25Count = t25Count + 1 end
+  if HasInventoryItem(5, L.ITEM_T25_CHEST) then t25Count = t25Count + 1 end
+  if HasInventoryItem(7, L.ITEM_T25_LEGS) then t25Count = t25Count + 1 end
+  if HasInventoryItem(8, L.ITEM_T25_FEET) then t25Count = t25Count + 1 end
+  if t25Count >= 3 then
+    costSunder = costSunder - 5
+    costWhirlwind = costWhirlwind - 5
+    costHeroicStrike = costHeroicStrike - 5
+  end
+
+  -- Update state
+  Shalamayne.costSunderArmor = costSunder
+  Shalamayne.costWhirlwind = costWhirlwind
+  Shalamayne.costHeroicStrike = costHeroicStrike
+  Shalamayne.costCleave = costCleave
+  Shalamayne.costExecute = costExecute
+  Shalamayne.costSweepingStrikes = costSweeping
+end
+
 -- Scan the spellbook and cache the spell name to slot index mappings
-function Shalamayne_Spellbook.Scan()
-  local cache = Shalamayne_Spellbook.slotByName
+function Shalamayne.Scan()
+  local cache = Shalamayne.slotByName
   for k in pairs(cache) do cache[k] = nil end
 
   local numTabs = GetNumSpellTabs and GetNumSpellTabs() or 0
@@ -156,22 +233,20 @@ function Shalamayne_Spellbook.Scan()
     end
   end
 
-  Shalamayne_Spellbook.lastScanAt = GetTime()
+  Shalamayne.spellbookLastScanAt = GetTime()
 end
 
 -- Retrieve the spellbook slot index for a given spell name
-function Shalamayne_Spellbook.GetSlot(spellName)
-  return Shalamayne_Spellbook.slotByName[spellName]
+function Shalamayne.GetSlot(spellName)
+  return Shalamayne.slotByName[spellName]
 end
 
 
-Shalamayne_EnemyScanner = {
-  lastScanAt = 0,
-  lastCount = 1,
-  cacheSeconds = 0.35,
-  rangeYards = 8.0,
-  maxIterations = 40,
-}
+Shalamayne.scannerLastScanAt = 0
+Shalamayne.lastCount = 1
+Shalamayne.cacheSeconds = 0.35
+Shalamayne.rangeYards = 8.0
+Shalamayne.maxIterations = 40
 
 -- Returns the GUID of the current target (SuperWoW extends UnitExists to return GUID).
 local function GetTargetGuid()
@@ -192,17 +267,17 @@ end
 
 -- Count enemies near the player using UnitXP enemy targeting.
 -- This is best-effort and cached for a short time to avoid frequent target cycling.
-function Shalamayne_EnemyScanner.CountEnemiesInMelee()
+function Shalamayne.CountEnemiesInMelee()
   local now = GetTime()
-  if (now - Shalamayne_EnemyScanner.lastScanAt) < Shalamayne_EnemyScanner.cacheSeconds then
-    return Shalamayne_EnemyScanner.lastCount
+  if (now - Shalamayne.scannerLastScanAt) < Shalamayne.cacheSeconds then
+    return Shalamayne.lastCount
   end
 
   local function ScanGuidsInRange(rangeYards)
-    if not Shalamayne_EnemyScanner.knownEnemyGuids then
-      Shalamayne_EnemyScanner.knownEnemyGuids = {}
+    if not Shalamayne.knownEnemyGuids then
+      Shalamayne.knownEnemyGuids = {}
     end
-    local knownEnemyGuids = Shalamayne_EnemyScanner.knownEnemyGuids
+    local knownEnemyGuids = Shalamayne.knownEnemyGuids
     local checked = {}
     local count = 0
 
@@ -274,7 +349,7 @@ function Shalamayne_EnemyScanner.CountEnemiesInMelee()
     return checked, count
   end
 
-  local _, count = ScanGuidsInRange(Shalamayne_EnemyScanner.rangeYards)
+  local _, count = ScanGuidsInRange(Shalamayne.rangeYards)
 
   local originalGuid = GetTargetGuid()
   local seen = {}
@@ -282,15 +357,15 @@ function Shalamayne_EnemyScanner.CountEnemiesInMelee()
 
   local ok = pcall(UnitXP, "target", "nearestEnemy")
   if not ok or not UnitExists("target") then
-    Shalamayne_EnemyScanner.lastScanAt = now
-    Shalamayne_EnemyScanner.lastCount = 1
+    Shalamayne.scannerLastScanAt = now
+    Shalamayne.lastCount = 1
     RestoreTarget(originalGuid)
     return 1
   end
 
   local firstGuid = GetTargetGuid()
 
-  for i = 1, Shalamayne_EnemyScanner.maxIterations do
+  for i = 1, Shalamayne.maxIterations do
     local currentGuid = GetTargetGuid()
     if not currentGuid then break end
 
@@ -301,7 +376,7 @@ function Shalamayne_EnemyScanner.CountEnemiesInMelee()
     if not seen[currentGuid] then
       seen[currentGuid] = true
       local okDist, dist = pcall(UnitXP, "distanceBetween", "player", "target")
-      if okDist and dist and dist <= Shalamayne_EnemyScanner.rangeYards then
+      if okDist and dist and dist <= Shalamayne.rangeYards then
         count2 = count2 + 1
       end
     end
@@ -321,17 +396,17 @@ function Shalamayne_EnemyScanner.CountEnemiesInMelee()
     count = count2
   end
   if count < 1 then count = 1 end
-  Shalamayne_EnemyScanner.lastScanAt = now
-  Shalamayne_EnemyScanner.lastCount = count
+  Shalamayne.scannerLastScanAt = now
+  Shalamayne.lastCount = count
   return count
 end
 
-function Shalamayne_EnemyScanner.GetEnemyGuidsInRange(rangeYards)
-  rangeYards = rangeYards or Shalamayne_EnemyScanner.rangeYards
-  if not Shalamayne_EnemyScanner.knownEnemyGuids then
-    Shalamayne_EnemyScanner.knownEnemyGuids = {}
+function Shalamayne.GetEnemyGuidsInRange(rangeYards)
+  rangeYards = rangeYards or Shalamayne.rangeYards
+  if not Shalamayne.knownEnemyGuids then
+    Shalamayne.knownEnemyGuids = {}
   end
-  local knownEnemyGuids = Shalamayne_EnemyScanner.knownEnemyGuids
+  local knownEnemyGuids = Shalamayne.knownEnemyGuids
   local checked = {}
 
   local function InRange(unit)
@@ -400,28 +475,28 @@ function Shalamayne_EnemyScanner.GetEnemyGuidsInRange(rangeYards)
 end
 
 
-Shalamayne_Conditions = {}
+
 
 local BOOKTYPE_SPELL = BOOKTYPE_SPELL or "spell"
 
 -- Rage is represented as mana for Warriors in 1.12.
-function Shalamayne_Conditions.PlayerRage()
+function Shalamayne.PlayerRage()
   return UnitMana("player") or 0
 end
 
 -- Automatically target a nearby valid enemy in melee range (UnitXP)
-function Shalamayne_Conditions.AutoTargetMelee()
+function Shalamayne.AutoTargetMelee()
   local ok = pcall(UnitXP, "target", "nearestEnemy")
   if not ok or not UnitExists("target") then
     TargetNearestEnemy()
-    return Shalamayne_Conditions.TargetExists() 
+    return Shalamayne.TargetExists() 
   end
 
   local firstGuid = GetTargetGuid()
   local skullGuid = nil
   local crossGuid = nil
 
-  for i = 1, Shalamayne_EnemyScanner.maxIterations do
+  for i = 1, Shalamayne.maxIterations do
     local currentGuid = GetTargetGuid()
     if not currentGuid then break end
 
@@ -429,7 +504,7 @@ function Shalamayne_Conditions.AutoTargetMelee()
       break
     end
 
-    if Shalamayne_Conditions.TargetExists() then
+    if Shalamayne.TargetExists() then
       local mark = GetRaidTargetIndex and GetRaidTargetIndex("target") or 0
       if mark == 8 then
         skullGuid = currentGuid
@@ -452,16 +527,16 @@ function Shalamayne_Conditions.AutoTargetMelee()
 
   if skullGuid then
     TargetUnit(skullGuid)
-    return Shalamayne_Conditions.TargetExists()
+    return Shalamayne.TargetExists()
   end
   if crossGuid then
     TargetUnit(crossGuid)
-    return Shalamayne_Conditions.TargetExists()
+    return Shalamayne.TargetExists()
   end
 
   if TargetNearestEnemy then
     TargetNearestEnemy()
-    return Shalamayne_Conditions.TargetExists()
+    return Shalamayne.TargetExists()
   end
 
   ClearTarget()
@@ -469,7 +544,7 @@ function Shalamayne_Conditions.AutoTargetMelee()
 end
 
 -- Returns true when we have a live hostile target.
-function Shalamayne_Conditions.TargetExists()
+function Shalamayne.TargetExists()
   if not UnitExists("target") then return false end
   if UnitIsDeadOrGhost("target") then return false end
   if not UnitCanAttack("player", "target") then return false end
@@ -477,7 +552,7 @@ function Shalamayne_Conditions.TargetExists()
 end
 
 -- Target health percentage (0..100).
-function Shalamayne_Conditions.TargetHealthPct()
+function Shalamayne.TargetHealthPct()
   local hp = UnitHealth("target") or 0
   local maxHp = UnitHealthMax("target") or 0
   if maxHp <= 0 then return 0 end
@@ -485,13 +560,13 @@ function Shalamayne_Conditions.TargetHealthPct()
 end
 
 -- Target absolute health value.
-function Shalamayne_Conditions.TargetHealth()
+function Shalamayne.TargetHealth()
   return UnitHealth("target") or 0
 end
 
 -- Distance between player and target, in yards (UnitXP).
-function Shalamayne_Conditions.DistanceToTarget()
-  if not Shalamayne_Conditions.TargetExists() then return nil end
+function Shalamayne.DistanceToTarget()
+  if not Shalamayne.TargetExists() then return nil end
   local ok, dist = pcall(UnitXP, "distanceBetween", "player", "target")
   if ok then return dist end
   return nil
@@ -499,9 +574,9 @@ end
 
 -- Returns true when the target is in melee range.
 -- We prefer UnitXP distance; as a secondary signal we can use IsSpellInRange with a melee ability.
-function Shalamayne_Conditions.InMeleeRange(L)
-  if not Shalamayne_Conditions.TargetExists() then return false end
-  local dist = Shalamayne_Conditions.DistanceToTarget()
+function Shalamayne.InMeleeRange(L)
+  if not Shalamayne.TargetExists() then return false end
+  local dist = Shalamayne.DistanceToTarget()
   if dist then
     return dist <= 5.0
   end
@@ -513,7 +588,7 @@ function Shalamayne_Conditions.InMeleeRange(L)
 end
 
 -- Current stance: 1=Battle, 2=Defensive, 3=Berserker.
-function Shalamayne_Conditions.GetStance()
+function Shalamayne.GetStance()
   if GetNumShapeshiftForms and GetShapeshiftFormInfo then
     local L = Shalamayne_Locals
     local battle = L and L.STANCE_BATTLE_NAME or "Battle Stance"
@@ -532,31 +607,46 @@ function Shalamayne_Conditions.GetStance()
 end
 
 -- Overpower becomes usable for a short window after your attack is dodged.
-function Shalamayne_Conditions.HasOverpowerWindow(now)
+function Shalamayne.HasOverpowerWindow(now)
   now = now or GetTime()
-  return Shalamayne_State.overpowerUntil and Shalamayne_State.overpowerUntil > now
+  if Shalamayne.overpowerUntil and Shalamayne.overpowerUntil > now then
+    -- Check if we are still targeting the mob that dodged
+    local _, guid = UnitExists("target")
+    if guid and Shalamayne.overpowerTargetGuid == guid then
+      return true
+    end
+  end
+  return false
 end
 
 -- Get mainhand swing timer remaining. Returns 0 if weapon is ready to swing.
-function Shalamayne_Conditions.MainhandSwingRemaining(now)
-  now = now or GetTime()
-  local elapsed = now - (Shalamayne_State.mainhandSwingTime or 0)
-  local duration = Shalamayne_State.mainhandSwingDuration or 2.0
-  if elapsed >= duration then return 0 end
-  return duration - elapsed
+function Shalamayne.MainhandSwingRemaining()
+  if SP_ST_FrameTimer and SP_ST_FrameTimer.GetMainhandRemaining then
+    local rem = SP_ST_FrameTimer.GetMainhandRemaining()
+    if rem then return rem end
+  end
+  if SP_ST_GS and SP_ST_GS.maintimer then
+    -- Try to parse from the timer text if API is not available
+    local text = SP_ST_maintimer:GetText()
+    if text then
+      local rem = tonumber(text)
+      if rem then return rem end
+    end
+  end
+  return 0
 end
 
--- Get offhand swing timer remaining. Returns 0 if weapon is ready to swing.
-function Shalamayne_Conditions.OffhandSwingRemaining(now)
-  now = now or GetTime()
-  local elapsed = now - (Shalamayne_State.offhandSwingTime or 0)
-  local duration = Shalamayne_State.offhandSwingDuration or 2.0
-  if elapsed >= duration then return 0 end
-  return duration - elapsed
+-- Get mainhand swing duration (total time of a swing).
+function Shalamayne.MainhandSwingDuration()
+  local speedMH, _ = UnitAttackSpeed("player")
+  if speedMH and speedMH > 0 then
+    return speedMH
+  end
+  return 2.0
 end
 
 -- Spell cooldown check by spellbook slot.
-function Shalamayne_Conditions.IsSpellReady(spellName, now)
+function Shalamayne.IsSpellReady(spellName, now)
   now = now or GetTime()
   local spellId = GetSpellIdFromName(spellName)
   if IsSpellOnCooldown(spellId, spellName, true) then
@@ -565,7 +655,7 @@ function Shalamayne_Conditions.IsSpellReady(spellName, now)
   return true
 end
 
-function Shalamayne_Conditions.IsSpellQueued(spellName)
+function Shalamayne.IsSpellQueued(spellName)
   if GetCurrentCastingInfo then
     local _, _, _, _, _, onswing = GetCurrentCastingInfo()
     if onswing == 1 then
@@ -577,14 +667,14 @@ function Shalamayne_Conditions.IsSpellQueued(spellName)
 end
 
 -- Returns an approximate enemy count for AoE decisions and a table of low HP enemies (HP < 20%).
-function Shalamayne_Conditions.GetEnemiesInfoInRange()
+function Shalamayne.GetEnemiesInfoInRange()
   local hpTable = {}
-  local ok, count = pcall(Shalamayne_EnemyScanner.CountEnemiesInMelee)
+  local ok, count = pcall(Shalamayne.CountEnemiesInMelee)
   if not ok then return 1, hpTable end
   if type(count) ~= "number" then count = 1 end
 
-  if Shalamayne_EnemyScanner and Shalamayne_EnemyScanner.knownEnemyGuids then
-    for guid in pairs(Shalamayne_EnemyScanner.knownEnemyGuids) do
+  if Shalamayne and Shalamayne.knownEnemyGuids then
+    for guid in pairs(Shalamayne.knownEnemyGuids) do
       if UnitExists(guid) and UnitCanAttack("player", guid) and not UnitIsDead(guid) then
         local maxHp = UnitHealthMax(guid) or 0
         if maxHp > 0 then
@@ -601,8 +691,8 @@ end
 
 -- Get Sunder Armor stacks on target (0..5).
 -- In 1.12 UnitDebuff returns texture and stack count; we match by texture.
-function Shalamayne_Conditions.TargetSunderArmorStacks()
-  if not Shalamayne_Conditions.TargetExists() then return 0 end
+function Shalamayne.TargetSunderArmorStacks()
+  if not Shalamayne.TargetExists() then return 0 end
   local sid = GetSpellIdFromName("Sunder Armor") or GetSpellIdFromName("破甲攻击")
   local found, _, stacks = FindUnitAuraInfo("target", sid, "sunder armor")
   if found ~= nil then

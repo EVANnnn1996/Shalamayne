@@ -1,5 +1,6 @@
 -- Shalamayne Configuration UI Module
-Shalamayne_ConfigUI = { frame = nil }
+Shalamayne = Shalamayne or {}
+Shalamayne.configFrame = nil
 
 -- Helper function to create a labeled checkbox
 local function CreateCheckbox(parent, label, x, y)
@@ -28,7 +29,7 @@ end
 
 -- Initialize and create the configuration frame (lazy loading)
 local function CreateFrameOnce(L)
-  if Shalamayne_ConfigUI.frame then return end
+  if Shalamayne.configFrame then return end
 
   local f = CreateFrame("Frame", "Shalamayne_ConfigFrame", UIParent)
   f:SetWidth(360)
@@ -119,61 +120,64 @@ local function CreateFrameOnce(L)
 
   -- Refresh UI elements to match current settings
   local function Refresh()
-    cbEnabled:SetChecked(Shalamayne_Settings.enabled and 1 or 0)
-    cbDebug:SetChecked(Shalamayne_Settings.debug and 1 or 0)
-    hsBox:SetNumber(Shalamayne_Settings.heroicStrikeRage or 50)
-    aoeBox:SetNumber(Shalamayne_Settings.aoeEnemies or 2)
-    sunderBox:SetNumber(Shalamayne_Settings.sunderArmorHp or 1000)
-    finBox:SetNumber(Shalamayne_Settings.finisherExecuteHp or 50000)
-    slamBox:SetText(tostring(Shalamayne_Settings.slamSwingThreshold or 0.5))
+    cbEnabled:SetChecked(Shalamayne.enabled and 1 or 0)
+    cbDebug:SetChecked(Shalamayne.debug and 1 or 0)
+    hsBox:SetNumber(Shalamayne.heroicStrikeRage or 50)
+    aoeBox:SetNumber(Shalamayne.aoeEnemies or 2)
+    sunderBox:SetNumber(Shalamayne.sunderArmorHp or 1000)
+    finBox:SetNumber(Shalamayne.finisherExecuteHp or 50000)
+    slamBox:SetText(tostring(Shalamayne.slamSwingThreshold or 0.5))
   end
 
-  cbEnabled:SetScript("OnClick", function() Shalamayne_Settings.enabled = cbEnabled:GetChecked() == 1 end)
+  cbEnabled:SetScript("OnClick", function() Shalamayne.enabled = cbEnabled:GetChecked() == 1 end)
   cbDebug:SetScript("OnClick", function()
-    Shalamayne_Settings.debug = cbDebug:GetChecked() == 1
-    if Shalamayne_Settings.debug then
-      Shalamayne_DebugUI.Show(L)
+    Shalamayne.debug = cbDebug:GetChecked() == 1
+    if Shalamayne.debug then
+      Shalamayne.ShowDebug(L)
     else
-      Shalamayne_DebugUI.Hide()
+      Shalamayne.HideDebug()
     end
   end)
 
-  btnArms:SetScript("OnClick", function() Shalamayne_Settings.spec = L.SPEC_ARMS_KEY end)
-  btnFury:SetScript("OnClick", function() Shalamayne_Settings.spec = L.SPEC_FURY_KEY end)
+  btnArms:SetScript("OnClick", function() Shalamayne.spec = L.SPEC_ARMS_KEY end)
+  btnFury:SetScript("OnClick", function() Shalamayne.spec = L.SPEC_FURY_KEY end)
 
   btnApply:SetScript("OnClick", function()
-    Shalamayne_Settings.heroicStrikeRage = tonumber(hsBox:GetText()) or 50
-    Shalamayne_Settings.aoeEnemies = tonumber(aoeBox:GetText()) or 2
-    Shalamayne_Settings.sunderArmorHp = tonumber(sunderBox:GetText()) or 1000
-    Shalamayne_Settings.finisherExecuteHp = tonumber(finBox:GetText()) or 50000
-    Shalamayne_Settings.slamSwingThreshold = tonumber(slamBox:GetText()) or 0.5
+    Shalamayne.heroicStrikeRage = tonumber(hsBox:GetText()) or 50
+    Shalamayne.aoeEnemies = tonumber(aoeBox:GetText()) or 2
+    Shalamayne.sunderArmorHp = tonumber(sunderBox:GetText()) or 1000
+    Shalamayne.finisherExecuteHp = tonumber(finBox:GetText()) or 50000
+    Shalamayne.slamSwingThreshold = tonumber(slamBox:GetText()) or 0.5
     Refresh()
   end)
 
   f:SetScript("OnShow", Refresh)
 
-  Shalamayne_ConfigUI.frame = f
+  Shalamayne.configFrame = f
 end
 
 -- Show the configuration window
-function Shalamayne_ConfigUI.Show(L)
+function Shalamayne.ShowConfig(L)
   CreateFrameOnce(L)
-  Shalamayne_ConfigUI.frame:Show()
+  Shalamayne.configFrame:Show()
 end
 
 -- Hide the configuration window
-function Shalamayne_ConfigUI.Hide()
-  if not Shalamayne_ConfigUI.frame then return end
-  Shalamayne_ConfigUI.frame:Hide()
+function Shalamayne.HideConfig()
+  if not Shalamayne.configFrame then return end
+  Shalamayne.configFrame:Hide()
 end
 
 
 -- Shalamayne Debug UI Module
-Shalamayne_DebugUI = { frame = nil, lines = {}, maxLines = 12 }
+Shalamayne = Shalamayne or {}
+Shalamayne.debugFrame = nil
+Shalamayne.lines = {}
+Shalamayne.maxLines = 12
 
 -- Initialize and create the debug frame (lazy loading)
 local function CreateFrameOnceDebug(L)
-  if Shalamayne_DebugUI.frame then return end
+  if Shalamayne.debugFrame then return end
 
   local f = CreateFrame("Frame", "Shalamayne_DebugFrame", UIParent)
   f:SetWidth(420)
@@ -200,12 +204,12 @@ local function CreateFrameOnceDebug(L)
   local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -5, -5)
   close:SetScript("OnClick", function()
-    Shalamayne_Settings.debug = false
-    Shalamayne_DebugUI.Hide()
+    Shalamayne.debug = false
+    Shalamayne.HideDebug()
   end)
 
   local content = {}
-  for i = 1, Shalamayne_DebugUI.maxLines do
+  for i = 1, Shalamayne.maxLines do
     local line = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     line:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -18 - (i * 14))
     line:SetJustifyH("LEFT")
@@ -213,34 +217,34 @@ local function CreateFrameOnceDebug(L)
     content[i] = line
   end
 
-  Shalamayne_DebugUI.frame = f
-  Shalamayne_DebugUI.lines = content
+  Shalamayne.debugFrame = f
+  Shalamayne.lines = content
 end
 
 -- Show the debug window
-function Shalamayne_DebugUI.Show(L)
+function Shalamayne.ShowDebug(L)
   CreateFrameOnceDebug(L)
-  Shalamayne_DebugUI.frame:Show()
+  Shalamayne.debugFrame:Show()
 end
 
 -- Hide the debug window
-function Shalamayne_DebugUI.Hide()
-  if not Shalamayne_DebugUI.frame then return end
-  Shalamayne_DebugUI.frame:Hide()
+function Shalamayne.HideDebug()
+  if not Shalamayne.debugFrame then return end
+  Shalamayne.debugFrame:Hide()
 end
 
 -- Check if the debug window is currently visible
-function Shalamayne_DebugUI.IsShown()
-  return Shalamayne_DebugUI.frame and Shalamayne_DebugUI.frame:IsShown()
+function Shalamayne.IsShown()
+  return Shalamayne.debugFrame and Shalamayne.debugFrame:IsShown()
 end
 
 -- Push a new line of text to the debug window (shifts older lines up)
-function Shalamayne_DebugUI.PushLine(text)
-  if not (Shalamayne_Settings and Shalamayne_Settings.debug) then return end
-  if not Shalamayne_DebugUI.frame then return end
+function Shalamayne.PushLine(text)
+  if not (Shalamayne and Shalamayne.debug) then return end
+  if not Shalamayne.debugFrame then return end
 
-  local lines = Shalamayne_DebugUI.lines
-  for i = Shalamayne_DebugUI.maxLines, 2, -1 do
+  local lines = Shalamayne.lines
+  for i = Shalamayne.maxLines, 2, -1 do
     lines[i]:SetText(lines[i - 1]:GetText() or "")
   end
   lines[1]:SetText(text)
@@ -248,16 +252,17 @@ end
 
 
 -- Shalamayne Minimap Button Module
-Shalamayne_Minimap = { button = nil }
+Shalamayne = Shalamayne or {}
+Shalamayne.button = nil
 
 local atan2f = math.atan2 or atan2
 local degf = math.deg or function(r) return r * 180 / math.pi end
 
 -- Create or return the existing minimap button
 local function GetOrCreateButton(L)
-  if Shalamayne_Minimap.button then return Shalamayne_Minimap.button end
+  if Shalamayne.button then return Shalamayne.button end
 
-  local b = CreateFrame("Button", "Shalamayne_MinimapButton", Minimap)
+  local b = CreateFrame("Button", "ShalamayneButton", Minimap)
   b:SetWidth(32)
   b:SetHeight(32)
   b:SetFrameStrata("MEDIUM")
@@ -284,7 +289,7 @@ local function GetOrCreateButton(L)
 
   -- Update button position based on the saved angle
   local function UpdatePosition()
-    local angle = (Shalamayne_Settings.minimapAngle or 0) * (math.pi / 180)
+    local angle = (Shalamayne.minimapAngle or 0) * (math.pi / 180)
     local x = math.cos(angle) * 80
     local y = math.sin(angle) * 80
     b:ClearAllPoints()
@@ -300,7 +305,7 @@ local function GetOrCreateButton(L)
 
     local angle = degf(atan2f(cy - my, cx - mx))
     if angle < 0 then angle = angle + 360 end
-    Shalamayne_Settings.minimapAngle = angle
+    Shalamayne.minimapAngle = angle
     UpdatePosition()
   end
 
@@ -314,24 +319,24 @@ local function GetOrCreateButton(L)
 
   b:SetScript("OnClick", function()
     if arg1 == "RightButton" then
-      Shalamayne_ConfigUI.Show(L)
+      Shalamayne.ShowConfig(L)
     else
       Shalamayne_ToggleEnabled()
     end
   end)
 
   b.UpdatePosition = UpdatePosition
-  Shalamayne_Minimap.button = b
+  Shalamayne.button = b
   UpdatePosition()
 
   return b
 end
 
 -- Refresh the minimap button visibility and position
-function Shalamayne_Minimap.Refresh(L)
+function Shalamayne.Refresh(L)
   local show = true
-  if Shalamayne_Settings and Shalamayne_Settings.showMinimap ~= nil then
-    show = Shalamayne_Settings.showMinimap
+  if Shalamayne and Shalamayne.showMinimap ~= nil then
+    show = Shalamayne.showMinimap
   end
   local b = GetOrCreateButton(L)
   if show then
