@@ -431,7 +431,7 @@ frame:SetScript("OnEvent", function()
         Shalamayne.overpowerUntil = 0
         Shalamayne.overpowerTargetGuid = nil
       elseif arg4 == 11597 then
-        local guid = UnitGUID("target")
+        local _, guid = UnitExists("target")
         if guid then
           Shalamayne.sunderOnceByGuid[guid] = GetTime()
         end
