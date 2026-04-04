@@ -1,4 +1,4 @@
-Shalamayne = Shalamayne or {}
+if not Shalamayne then Shalamayne = {} end
 Shalamayne.slotByName = {}
 Shalamayne.spellbookLastScanAt = 0
 

@@ -1,5 +1,5 @@
 -- Shalamayne Configuration UI Module
-Shalamayne = Shalamayne or {}
+if not Shalamayne then Shalamayne = {} end
 Shalamayne.configFrame = nil
 
 -- Helper function to create a labeled checkbox
@@ -129,9 +129,13 @@ local function CreateFrameOnce(L)
     slamBox:SetText(tostring(Shalamayne.slamSwingThreshold or 0.5))
   end
 
-  cbEnabled:SetScript("OnClick", function() Shalamayne.enabled = cbEnabled:GetChecked() == 1 end)
+  cbEnabled:SetScript("OnClick", function()
+    Shalamayne.enabled = cbEnabled:GetChecked() == 1
+    if Shalamayne_SaveSettings then Shalamayne_SaveSettings() end
+  end)
   cbDebug:SetScript("OnClick", function()
     Shalamayne.debug = cbDebug:GetChecked() == 1
+    if Shalamayne_SaveSettings then Shalamayne_SaveSettings() end
     if Shalamayne.debug then
       Shalamayne.ShowDebug(L)
     else
@@ -139,8 +143,14 @@ local function CreateFrameOnce(L)
     end
   end)
 
-  btnArms:SetScript("OnClick", function() Shalamayne.spec = L.SPEC_ARMS_KEY end)
-  btnFury:SetScript("OnClick", function() Shalamayne.spec = L.SPEC_FURY_KEY end)
+  btnArms:SetScript("OnClick", function()
+    Shalamayne.spec = L.SPEC_ARMS_KEY
+    if Shalamayne_SaveSettings then Shalamayne_SaveSettings() end
+  end)
+  btnFury:SetScript("OnClick", function()
+    Shalamayne.spec = L.SPEC_FURY_KEY
+    if Shalamayne_SaveSettings then Shalamayne_SaveSettings() end
+  end)
 
   btnApply:SetScript("OnClick", function()
     Shalamayne.heroicStrikeRage = tonumber(hsBox:GetText()) or 50
@@ -148,6 +158,7 @@ local function CreateFrameOnce(L)
     Shalamayne.sunderArmorHp = tonumber(sunderBox:GetText()) or 1000
     Shalamayne.finisherExecuteHp = tonumber(finBox:GetText()) or 50000
     Shalamayne.slamSwingThreshold = tonumber(slamBox:GetText()) or 0.5
+    if Shalamayne_SaveSettings then Shalamayne_SaveSettings() end
     Refresh()
   end)
 
@@ -173,7 +184,7 @@ end
 
 
 -- Shalamayne Debug UI Module
-Shalamayne = Shalamayne or {}
+if not Shalamayne then Shalamayne = {} end
 Shalamayne.debugFrame = nil
 Shalamayne.lines = {}
 Shalamayne.maxLines = 12
@@ -315,7 +326,10 @@ local function GetOrCreateButton(L)
   end
 
   b:SetScript("OnDragStart", function() b.isDragging = true end)
-  b:SetScript("OnDragStop", function() b.isDragging = false end)
+  b:SetScript("OnDragStop", function()
+    b.isDragging = false
+    if Shalamayne_SaveSettings then Shalamayne_SaveSettings() end
+  end)
   b:SetScript("OnUpdate", function()
     if b.isDragging then
       SetAngleFromCursor()

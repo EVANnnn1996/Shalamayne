@@ -1,7 +1,7 @@
 ## Interface: 11200
 ## Title: Shalamayne
 ## Notes: A streamlined 1.12 auto-rotation addon
-## SavedVariablesPerCharacter: Shalamayne
+## SavedVariablesPerCharacter: Shalamayne_Settings
 ## Dependencies: SP_SwingTimer
 
 Localization.lua

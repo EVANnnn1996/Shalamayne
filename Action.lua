@@ -1,4 +1,4 @@
-Shalamayne = Shalamayne or {}
+if not Shalamayne then Shalamayne = {} end
 
 Shalamayne.inCombat = false
 Shalamayne.overpowerUntil = 0

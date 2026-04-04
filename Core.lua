@@ -14,18 +14,48 @@ end
 
 -- Initialize default settings if they are missing
 local function EnsureDefaults()
-  if not Shalamayne then Shalamayne = {} end
-  if Shalamayne.enabled == nil then Shalamayne.enabled = true end
-  if Shalamayne.spec == nil then Shalamayne.spec = L.SPEC_ARMS_KEY end
-  if Shalamayne.debug == nil then Shalamayne.debug = false end
-  if Shalamayne.showMinimap == nil then Shalamayne.showMinimap = true end
-  if Shalamayne.minimapAngle == nil then Shalamayne.minimapAngle = 220 end
+  if not Shalamayne_Settings then Shalamayne_Settings = {} end
+  if Shalamayne_Settings.enabled == nil then Shalamayne_Settings.enabled = true end
+  if Shalamayne_Settings.spec == nil then Shalamayne_Settings.spec = L.SPEC_ARMS_KEY end
+  if Shalamayne_Settings.debug == nil then Shalamayne_Settings.debug = false end
+  if Shalamayne_Settings.showMinimap == nil then Shalamayne_Settings.showMinimap = true end
+  if Shalamayne_Settings.minimapAngle == nil then Shalamayne_Settings.minimapAngle = 220 end
 
-  if Shalamayne.heroicStrikeRage == nil then Shalamayne.heroicStrikeRage = 50 end
-  if Shalamayne.aoeEnemies == nil then Shalamayne.aoeEnemies = 2 end
-  if Shalamayne.sunderArmorHp == nil then Shalamayne.sunderArmorHp = 1000 end
-  if Shalamayne.finisherExecuteHp == nil then Shalamayne.finisherExecuteHp = 50000 end
-  if Shalamayne.slamSwingThreshold == nil then Shalamayne.slamSwingThreshold = 0.5 end
+  if Shalamayne_Settings.heroicStrikeRage == nil then Shalamayne_Settings.heroicStrikeRage = 50 end
+  if Shalamayne_Settings.aoeEnemies == nil then Shalamayne_Settings.aoeEnemies = 2 end
+  if Shalamayne_Settings.sunderArmorHp == nil then Shalamayne_Settings.sunderArmorHp = 1000 end
+  if Shalamayne_Settings.finisherExecuteHp == nil then Shalamayne_Settings.finisherExecuteHp = 50000 end
+  if Shalamayne_Settings.slamSwingThreshold == nil then Shalamayne_Settings.slamSwingThreshold = 0.5 end
+
+  -- Copy settings to runtime Shalamayne object
+  Shalamayne.enabled = Shalamayne_Settings.enabled
+  Shalamayne.spec = Shalamayne_Settings.spec
+  Shalamayne.debug = Shalamayne_Settings.debug
+  Shalamayne.showMinimap = Shalamayne_Settings.showMinimap
+  Shalamayne.minimapAngle = Shalamayne_Settings.minimapAngle
+  Shalamayne.heroicStrikeRage = Shalamayne_Settings.heroicStrikeRage
+  Shalamayne.aoeEnemies = Shalamayne_Settings.aoeEnemies
+  Shalamayne.sunderArmorHp = Shalamayne_Settings.sunderArmorHp
+  Shalamayne.finisherExecuteHp = Shalamayne_Settings.finisherExecuteHp
+  Shalamayne.slamSwingThreshold = Shalamayne_Settings.slamSwingThreshold
+end
+
+function Shalamayne_SaveSettings()
+  if not Shalamayne_Settings then Shalamayne_Settings = {} end
+  Shalamayne_Settings.enabled = Shalamayne.enabled
+  Shalamayne_Settings.spec = Shalamayne.spec
+  Shalamayne_Settings.debug = Shalamayne.debug
+  Shalamayne_Settings.showMinimap = Shalamayne.showMinimap
+  Shalamayne_Settings.minimapAngle = Shalamayne.minimapAngle
+  Shalamayne_Settings.heroicStrikeRage = Shalamayne.heroicStrikeRage
+  Shalamayne_Settings.aoeEnemies = Shalamayne.aoeEnemies
+  Shalamayne_Settings.sunderArmorHp = Shalamayne.sunderArmorHp
+  Shalamayne_Settings.finisherExecuteHp = Shalamayne.finisherExecuteHp
+  Shalamayne_Settings.slamSwingThreshold = Shalamayne.slamSwingThreshold
+end
+
+local function SaveSettings()
+  Shalamayne_SaveSettings()
 end
 
 -- Compare version numbers
@@ -118,6 +148,7 @@ function Shalamayne_ToggleEnabled()
     return
   end
   Shalamayne.enabled = not Shalamayne.enabled
+  SaveSettings()
   Print((Shalamayne.enabled and L.STATUS_ENABLED) or L.STATUS_DISABLED)
 end
 
@@ -125,6 +156,7 @@ end
 local function SetSpec(specKey)
   if specKey == L.SPEC_ARMS_KEY or specKey == L.SPEC_FURY_KEY then
     Shalamayne.spec = specKey
+    SaveSettings()
   end
 end
 
@@ -193,6 +225,7 @@ SlashCmdList["SHALAMAYNE"] = function(msg)
       return
     end
     Shalamayne.debug = not Shalamayne.debug
+    SaveSettings()
     if Shalamayne.debug then
       Shalamayne.ShowDebug(L)
       Print(L.STATUS_DEBUG .. ": on")
@@ -213,6 +246,7 @@ SlashCmdList["SHALAMAYNE"] = function(msg)
   if cmd == "minimap" then
     if not Shalamayne then Shalamayne = {} end
     Shalamayne.showMinimap = not Shalamayne.showMinimap
+    SaveSettings()
     if Shalamayne.Refresh then
       Shalamayne.Refresh(L)
     end
@@ -283,6 +317,8 @@ frame:SetScript("OnEvent", function()
     if arg1 ~= "Shalamayne" then return end
 
     EnsureDefaults()
+
+    -- Perform initial scan
     if Shalamayne.ScanSpellbook then
       Shalamayne.ScanSpellbook()
     end
