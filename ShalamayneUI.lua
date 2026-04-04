@@ -159,13 +159,16 @@ end
 -- Show the configuration window
 function Shalamayne.ShowConfig(L)
   CreateFrameOnce(L)
-  Shalamayne.configFrame:Show()
+  if Shalamayne.configFrame then
+    Shalamayne.configFrame:Show()
+  end
 end
 
 -- Hide the configuration window
 function Shalamayne.HideConfig()
-  if not Shalamayne.configFrame then return end
-  Shalamayne.configFrame:Hide()
+  if Shalamayne.configFrame then
+    Shalamayne.configFrame:Hide()
+  end
 end
 
 
@@ -224,7 +227,9 @@ end
 -- Show the debug window
 function Shalamayne.ShowDebug(L)
   CreateFrameOnceDebug(L)
-  Shalamayne.debugFrame:Show()
+  if Shalamayne.debugFrame then
+    Shalamayne.debugFrame:Show()
+  end
 end
 
 -- Hide the debug window

@@ -213,7 +213,7 @@ SlashCmdList["SHALAMAYNE"] = function(msg)
   if cmd == "minimap" then
     if not Shalamayne then Shalamayne = {} end
     Shalamayne.showMinimap = not Shalamayne.showMinimap
-    if Shalamayne and Shalamayne.Refresh then
+    if Shalamayne.Refresh then
       Shalamayne.Refresh(L)
     end
     Print("Minimap: " .. tostring(Shalamayne.showMinimap))
@@ -283,8 +283,10 @@ frame:SetScript("OnEvent", function()
     if arg1 ~= "Shalamayne" then return end
 
     EnsureDefaults()
-    Shalamayne.Scan()
-    if Shalamayne and Shalamayne.RefreshWarriorState then
+    if Shalamayne.ScanSpellbook then
+      Shalamayne.ScanSpellbook()
+    end
+    if Shalamayne.RefreshWarriorState then
       Shalamayne.RefreshWarriorState(L)
     end
 
@@ -303,7 +305,6 @@ frame:SetScript("OnEvent", function()
 
     Shalamayne.disabled = false
     Shalamayne.disabledErrors = nil
-
 
     if SetCVar then
       SetCVar("NP_EnableAutoAttackEvents", "1")
@@ -325,7 +326,9 @@ frame:SetScript("OnEvent", function()
 
   if event == "PLAYER_REGEN_DISABLED" then
     Shalamayne.inCombat = true
-    Shalamayne.Scan()
+    if Shalamayne.ScanSpellbook then
+      Shalamayne.ScanSpellbook()
+    end
     return
   end
 
@@ -336,22 +339,27 @@ frame:SetScript("OnEvent", function()
   end
 
   if event == "SPELLS_CHANGED" or event == "CHARACTER_POINTS_CHANGED" then
-    if Shalamayne then
-      Shalamayne.Scan()
+    if Shalamayne.ScanSpellbook then
+      Shalamayne.ScanSpellbook()
     end
-    if Shalamayne and Shalamayne.RefreshWarriorState then
+    if Shalamayne.RefreshWarriorState then
       Shalamayne.RefreshWarriorState(L)
     end
     return
   end
 
   if event == "UNIT_INVENTORY_CHANGED" and arg1 == "player" then
-    if Shalamayne and Shalamayne.RefreshWarriorState then
+    if Shalamayne.RefreshWarriorState then
       Shalamayne.RefreshWarriorState(L)
     end
     return
   end
 
+  if event == "PLAYER_TARGET_CHANGED" then
+  end
+
+  if event == "UPDATE_SHAPESHIFT_FORM" then
+  end
 
   if event == "CHAT_MSG_COMBAT_SELF_MISSES" then
     local msg = arg1 or ""
@@ -382,12 +390,16 @@ frame:SetScript("OnEvent", function()
   end
 
   if event == "UNIT_CASTEVENT" then
-    if arg4 == L.SPELL_OVERPOWER then
-      Shalamayne.overpowerUntil = 0
-      Shalamayne.overpowerTargetGuid = nil
-    elseif arg4 == 11597 then
-      local _, guid = UnitExists("target")
-      Shalamayne.sunderOnceByGuid[guid] = GetTime()
+    if arg1 == "player" and arg2 == "START" and arg4 then
+      if arg4 == L.SPELL_OVERPOWER then
+        Shalamayne.overpowerUntil = 0
+        Shalamayne.overpowerTargetGuid = nil
+      elseif arg4 == 11597 then
+        local guid = UnitGUID("target")
+        if guid then
+          Shalamayne.sunderOnceByGuid[guid] = GetTime()
+        end
+      end
     end
     return
   end

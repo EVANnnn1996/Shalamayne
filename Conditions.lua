@@ -215,7 +215,7 @@ function Shalamayne.RefreshWarriorState(L)
 end
 
 -- Scan the spellbook and cache the spell name to slot index mappings
-function Shalamayne.Scan()
+function Shalamayne.ScanSpellbook()
   local cache = Shalamayne.slotByName
   for k in pairs(cache) do cache[k] = nil end
 
