@@ -624,19 +624,10 @@ function Shalamayne.MainhandSwingRemaining()
   if st_timer ~= nil then
     local attackSpeed = st_timerMax or UnitAttackSpeed("player")
     if attackSpeed and attackSpeed > 0 then
-        return ((attackSpeed - st_timer) / attackSpeed) * 100
+        return (st_timer / attackSpeed)
     end
   end
   return 0
-end
-
--- Get mainhand swing duration (total time of a swing).
-function Shalamayne.MainhandSwingDuration()
-  local speedMH, _ = UnitAttackSpeed("player")
-  if speedMH and speedMH > 0 then
-    return speedMH
-  end
-  return 2.0
 end
 
 -- Spell cooldown check by spellbook slot.

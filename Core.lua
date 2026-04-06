@@ -426,15 +426,13 @@ frame:SetScript("OnEvent", function()
   end
 
   if event == "UNIT_CASTEVENT" then
-    if arg1 == "player" and arg2 == "START" and arg4 then
-      if arg4 == L.SPELL_OVERPOWER then
-        Shalamayne.overpowerUntil = 0
-        Shalamayne.overpowerTargetGuid = nil
-      elseif arg4 == 11597 then
-        local _, guid = UnitExists("target")
-        if guid then
-          Shalamayne.sunderOnceByGuid[guid] = GetTime()
-        end
+    if arg4 == L.SPELL_OVERPOWER then
+      Shalamayne.overpowerUntil = 0
+      Shalamayne.overpowerTargetGuid = nil
+    elseif arg4 == 11597 then
+      local _, guid = UnitExists("target")
+      if guid then
+        Shalamayne.sunderOnceByGuid[guid] = GetTime()
       end
     end
     return

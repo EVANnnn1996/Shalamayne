@@ -79,8 +79,7 @@ function Shalamayne.DecideArms(L, now)
 
   local function DoAOE()
     if Shalamayne.IsSpellReady(L.SPELL_EXECUTE, now) then
-      local mhRem = Shalamayne.MainhandSwingRemaining()
-      if mhRem < 1.5 then
+      if st_timer < 1.5 then
         local bestGuid = next(lowHpEnemies)
         if bestGuid then
           DebugHit("execute_other_target", L.SPELL_EXECUTE, now)
@@ -169,8 +168,7 @@ function Shalamayne.DecideArms(L, now)
 
     if inMelee and Shalamayne.IsSpellReady(L.SPELL_SLAM, now) then
       local mhRem = Shalamayne.MainhandSwingRemaining()
-      local mhDur = Shalamayne.MainhandSwingDuration()
-      if mhDur > 0 and (mhRem / mhDur) >= slamThreshold then
+      if mhRem >= slamThreshold then
         DebugHit("slam", L.SPELL_SLAM, now)
         QueueOrCast(L.SPELL_SLAM)
         return
