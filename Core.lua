@@ -369,7 +369,6 @@ frame:SetScript("OnEvent", function()
   end
 
   if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_DEAD" then
-    Shalamayne.inCombat = false
     Shalamayne.ResetCombat()
     return
   end

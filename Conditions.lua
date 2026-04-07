@@ -634,6 +634,22 @@ function Shalamayne.MainhandSwingRemaining()
   return 0
 end
 
+-- Returns the remaining cooldown of a spell in seconds.
+-- Returns 0 if the spell is ready or not found.
+function Shalamayne.GetSpellCooldownRemaining(spellName, now)
+  now = now or GetTime()
+  local spellId = GetSpellIdFromName(spellName)
+  local info = GetSpellCooldownInfo(spellId, spellName)
+  if not info or info.isOnCooldown == 0 then
+    return 0
+  end
+  local remainingMs = info.cooldownRemainingMs or 0
+  if remainingMs > 0 and remainingMs < 999999 then
+    return remainingMs / 1000.0
+  end
+  return 0
+end
+
 -- Spell cooldown check by spellbook slot.
 function Shalamayne.IsSpellReady(spellName, now)
   now = now or GetTime()
@@ -705,24 +721,28 @@ function Shalamayne.PlayerHasBuff(textureMatch)
   return false
 end
 
--- Get Sunder Armor stacks on target (0..5).
+-- Generic function to get debuff stacks on target (0 if not found).
 -- In 1.12 UnitDebuff returns texture and stack count; we match by texture.
-function Shalamayne.TargetSunderArmorStacks()
+function Shalamayne.TargetHasDebuff(textureMatch, spellNameOrId)
   if not Shalamayne.TargetExists() then return 0 end
-  local sid = GetSpellIdFromName("Sunder Armor") or GetSpellIdFromName("破甲攻击")
-  local found, _, stacks = FindUnitAuraInfo("target", sid, "sunder armor")
-  if found ~= nil then
-    if found then
-      return tonumber(stacks) or 0
+  
+  if FindUnitAuraInfo and spellNameOrId then
+    local sid = type(spellNameOrId) == "number" and spellNameOrId or (GetSpellIdFromName(spellNameOrId) or GetSpellIdFromName(L.SPELL_SUNDER_ARMOR))
+    local found, _, stacks = FindUnitAuraInfo("target", sid, string.lower(textureMatch))
+    if found ~= nil then
+      if found then
+        return tonumber(stacks) or 1
+      end
+      return 0
     end
-    return 0
   end
+
   local i = 1
   while true do
     local texture, stacks = UnitDebuff("target", i)
     if not texture then break end
-    if string.find(string.lower(texture), "ability_warrior_sunder") then
-      return tonumber(stacks) or 0
+    if string.find(string.lower(texture), string.lower(textureMatch)) then
+      return tonumber(stacks) or 1
     end
     i = i + 1
   end
