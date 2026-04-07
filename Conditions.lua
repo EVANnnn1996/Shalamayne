@@ -375,9 +375,13 @@ function Shalamayne.CountEnemiesInMelee()
 
     if not seen[currentGuid] then
       seen[currentGuid] = true
-      local okDist, dist = pcall(UnitXP, "distanceBetween", "player", "target")
-      if okDist and dist and dist <= Shalamayne.rangeYards then
-        count2 = count2 + 1
+      if UnitCanAttack("player", "target") and not UnitIsDeadOrGhost("target") then
+        if UnitIsEnemy("player", "target") or UnitAffectingCombat("target") then
+          local okDist, dist = pcall(UnitXP, "distanceBetween", "player", "target")
+          if okDist and dist and dist <= Shalamayne.rangeYards then
+            count2 = count2 + 1
+          end
+        end
       end
     end
 
@@ -567,7 +571,7 @@ end
 -- Distance between player and target, in yards (UnitXP).
 function Shalamayne.DistanceToTarget()
   if not Shalamayne.TargetExists() then return nil end
-  local ok, dist = pcall(UnitXP, "distanceBetween", "player", "target")
+  
   if ok then return dist end
   return nil
 end
@@ -688,8 +692,6 @@ function Shalamayne.GetEnemiesInfoInRange()
   return count, hpTable
 end
 
--- Get Sunder Armor stacks on target (0..5).
--- In 1.12 UnitDebuff returns texture and stack count; we match by texture.
 function Shalamayne.PlayerHasBuff(textureMatch)
   local i = 1
   while true do
@@ -703,6 +705,8 @@ function Shalamayne.PlayerHasBuff(textureMatch)
   return false
 end
 
+-- Get Sunder Armor stacks on target (0..5).
+-- In 1.12 UnitDebuff returns texture and stack count; we match by texture.
 function Shalamayne.TargetSunderArmorStacks()
   if not Shalamayne.TargetExists() then return 0 end
   local sid = GetSpellIdFromName("Sunder Armor") or GetSpellIdFromName("破甲攻击")

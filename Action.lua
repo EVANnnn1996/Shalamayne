@@ -1,6 +1,7 @@
 if not Shalamayne then Shalamayne = {} end
 
 Shalamayne.inCombat = false
+Shalamayne.isAutoAttacking = false
 Shalamayne.overpowerUntil = 0
 Shalamayne.overpowerTargetGuid = nil
 Shalamayne.sunderOnceByGuid = {}
@@ -22,10 +23,21 @@ function Shalamayne.ResetCombat()
   Shalamayne.sunderOnceByGuid = {}
   Shalamayne.queuedHeroicStrike = false
   Shalamayne.queuedCleave = false
+  Shalamayne.isAutoAttacking = false
   Shalamayne.queuedCleaveTime = nil
   Shalamayne.queuedHeroicStrikeTime = nil
 end
 
+local function StartAttack()
+  if not UnitExists("target") or UnitIsDeadOrGhost("target") or not UnitCanAttack("player", "target") then
+    return
+  end
+
+  if not Shalamayne.isAutoAttacking then
+    AttackTarget()
+    Shalamayne.isAutoAttacking = true
+  end
+end
 
 -- QueueSpellByName (Nampower) provides reliable spell queuing.
 -- If it's not available, fall back to CastSpellByName.
@@ -72,9 +84,7 @@ function Shalamayne.DecideArms(L, now)
   local finisherHp = Shalamayne.finisherExecuteHp or 50000
   local slamThreshold = Shalamayne.slamSwingThreshold or 0.5
 
-  if not (PlayerFrame and PlayerFrame.inCombat) then
-    AttackTarget()
-  end
+  StartAttack()
 
   if Shalamayne.inCombat and not Shalamayne.PlayerHasBuff("ability_warrior_battleshout") and rage >= 10 then
     DebugHit("battle_shout", L.SPELL_BATTLE_SHOUT, now)
@@ -87,6 +97,15 @@ function Shalamayne.DecideArms(L, now)
     DebugHit("stance_berseker_default", L.SPELL_BERSERKER_STANCE, now)
     QueueOrCast(L.SPELL_BERSERKER_STANCE)
     return
+  end
+
+  if inMelee and hpAbs > sunderHp and Shalamayne.TargetSunderArmorStacks() < 5 and Shalamayne.IsSpellReady(L.SPELL_SUNDER_ARMOR, now) then
+    local guid = Shalamayne.GetTargetGuid()
+    if not (guid and Shalamayne.sunderOnceByGuid and Shalamayne.sunderOnceByGuid[guid]) then
+      DebugHit("sunder_once", L.SPELL_SUNDER_ARMOR, now)
+      QueueOrCast(L.SPELL_SUNDER_ARMOR)
+      return
+    end
   end
 
   local function DoAOE()
@@ -144,15 +163,6 @@ function Shalamayne.DecideArms(L, now)
       end
     end
 
-    if inMelee and hpAbs > sunderHp and Shalamayne.TargetSunderArmorStacks() < 5 and Shalamayne.IsSpellReady(L.SPELL_SUNDER_ARMOR, now) then
-      local guid = Shalamayne.GetTargetGuid()
-      if not (guid and Shalamayne.sunderOnceByGuid and Shalamayne.sunderOnceByGuid[guid]) then
-        DebugHit("sunder_once", L.SPELL_SUNDER_ARMOR, now)
-        QueueOrCast(L.SPELL_SUNDER_ARMOR)
-        return
-      end
-    end
-
     if Shalamayne.IsSpellReady(L.SPELL_WHIRLWIND, now) then
       if stance ~= 3 and rage < 50 then
         DebugHit("stance_for_whirlwind", L.SPELL_BERSERKER_STANCE, now)
@@ -195,15 +205,6 @@ function Shalamayne.DecideArms(L, now)
       DebugHit("finisher_execute", L.SPELL_EXECUTE, now)
       QueueOrCast(L.SPELL_EXECUTE)
       return
-    end
-
-    if inMelee and hpAbs > sunderHp and Shalamayne.TargetSunderArmorStacks() < 5 and Shalamayne.IsSpellReady(L.SPELL_SUNDER_ARMOR, now) then
-      local guid = Shalamayne.GetTargetGuid()
-      if not (guid and Shalamayne.sunderOnceByGuid and Shalamayne.sunderOnceByGuid[guid]) then
-        DebugHit("sunder_once", L.SPELL_SUNDER_ARMOR, now)
-        QueueOrCast(L.SPELL_SUNDER_ARMOR)
-        return
-      end
     end
 
     if inMelee and hasOp then
@@ -281,18 +282,9 @@ function Shalamayne.DecideFury(L, now)
     end
   end
 
-  if not (PlayerFrame and PlayerFrame.inCombat) then
-    AttackTarget()
-  end
+  StartAttack()
 
   local rage = Shalamayne.PlayerRage()
-
-  if Shalamayne.inCombat andnot Shalamayne.PlayerHasBuff("ability_warrior_battleshout") and rage >= 10 then
-    DebugHit("battle_shout", L.SPELL_BATTLE_SHOUT, now)
-    QueueOrCast(L.SPELL_BATTLE_SHOUT)
-    return
-  end
-
   local stance = Shalamayne.GetStance()
   local inMelee = Shalamayne.InMeleeRange(L)
   local hpPct = Shalamayne.TargetHealthPct()
@@ -301,6 +293,12 @@ function Shalamayne.DecideFury(L, now)
   local sunderHp = Shalamayne.sunderArmorHp or 1000
   local finisherHp = Shalamayne.finisherExecuteHp or 50000
 
+  if not Shalamayne.PlayerHasBuff("ability_warrior_battleshout") and rage >= 10 then
+    DebugHit("battle_shout", L.SPELL_BATTLE_SHOUT, now)
+    QueueOrCast(L.SPELL_BATTLE_SHOUT)
+    return
+  end
+
   local hasOp = Shalamayne.HasOverpowerWindow(now)
   if stance ~= 3 and not (hasOp and Shalamayne.IsSpellReady(L.SPELL_OVERPOWER, now)) then
     DebugHit("stance_berseker_default", L.SPELL_BERSERKER_STANCE, now)
@@ -308,8 +306,7 @@ function Shalamayne.DecideFury(L, now)
     return
   end
 
-  local function DoAOE()
-    if inMelee and hpAbs > sunderHp and Shalamayne.TargetSunderArmorStacks() < 5 and Shalamayne.IsSpellReady(L.SPELL_SUNDER_ARMOR, now) then
+  if inMelee and hpAbs > sunderHp and Shalamayne.TargetSunderArmorStacks() < 5 and Shalamayne.IsSpellReady(L.SPELL_SUNDER_ARMOR, now) then
       local guid = Shalamayne.GetTargetGuid()
       if not (guid and Shalamayne.sunderOnceByGuid and Shalamayne.sunderOnceByGuid[guid]) then
         DebugHit("sunder_once", L.SPELL_SUNDER_ARMOR, now)
@@ -318,6 +315,7 @@ function Shalamayne.DecideFury(L, now)
       end
     end
 
+  local function DoAOE()
     if Shalamayne.IsSpellReady(L.SPELL_WHIRLWIND, now) then
       if stance ~= 3 and rage < 50 then
         DebugHit("stance_for_whirlwind", L.SPELL_BERSERKER_STANCE, now)
@@ -357,15 +355,6 @@ function Shalamayne.DecideFury(L, now)
       DebugHit("finisher_execute", L.SPELL_EXECUTE, now)
       QueueOrCast(L.SPELL_EXECUTE)
       return
-    end
-
-    if inMelee and hpAbs > sunderHp and Shalamayne.TargetSunderArmorStacks() < 5 and Shalamayne.IsSpellReady(L.SPELL_SUNDER_ARMOR, now) then
-      local guid = Shalamayne.GetTargetGuid()
-      if not (guid and Shalamayne.sunderOnceByGuid and Shalamayne.sunderOnceByGuid[guid]) then
-        DebugHit("sunder_once", L.SPELL_SUNDER_ARMOR, now)
-        QueueOrCast(L.SPELL_SUNDER_ARMOR)
-        return
-      end
     end
 
     if inMelee and hasOp then

@@ -391,6 +391,16 @@ frame:SetScript("OnEvent", function()
     return
   end
 
+  if event == "PLAYER_ENTER_COMBAT" then
+    Shalamayne.isAutoAttacking = true
+    return
+  end
+
+  if event == "PLAYER_LEAVE_COMBAT" then
+    Shalamayne.isAutoAttacking = false
+    return
+  end
+
   if event == "PLAYER_TARGET_CHANGED" then
   end
 
