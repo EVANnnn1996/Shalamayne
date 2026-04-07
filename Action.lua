@@ -4,6 +4,8 @@ Shalamayne.inCombat = false
 Shalamayne.overpowerUntil = 0
 Shalamayne.overpowerTargetGuid = nil
 Shalamayne.sunderOnceByGuid = {}
+Shalamayne.queuedHeroicStrike = false
+Shalamayne.queuedCleave = false
 
 -- Spell cost tracking based on talents/gear
 Shalamayne.costSunderArmor = 10
@@ -18,6 +20,10 @@ function Shalamayne.ResetCombat()
   Shalamayne.overpowerUntil = 0
   Shalamayne.overpowerTargetGuid = nil
   Shalamayne.sunderOnceByGuid = {}
+  Shalamayne.queuedHeroicStrike = false
+  Shalamayne.queuedCleave = false
+  Shalamayne.queuedCleaveTime = nil
+  Shalamayne.queuedHeroicStrikeTime = nil
 end
 
 
@@ -68,6 +74,14 @@ function Shalamayne.DecideArms(L, now)
 
   if not (PlayerFrame and PlayerFrame.inCombat) then
     AttackTarget()
+  end
+
+  if Shalamayne.inCombat and Shalamayne.IsSpellReady(L.SPELL_BATTLE_SHOUT, now) and not Shalamayne.PlayerHasBuff("ability_warrior_battleshout") then
+    if rage >= 10 then
+      DebugHit("battle_shout", L.SPELL_BATTLE_SHOUT, now)
+      QueueOrCast(L.SPELL_BATTLE_SHOUT)
+      return
+    end
   end
 
   local hasOp = Shalamayne.HasOverpowerWindow(now)
@@ -274,6 +288,15 @@ function Shalamayne.DecideFury(L, now)
   end
 
   local rage = Shalamayne.PlayerRage()
+
+  if Shalamayne.inCombat and Shalamayne.IsSpellReady(L.SPELL_BATTLE_SHOUT, now) and not Shalamayne.PlayerHasBuff("ability_warrior_battleshout") then
+    if rage >= 10 then
+      DebugHit("battle_shout", L.SPELL_BATTLE_SHOUT, now)
+      QueueOrCast(L.SPELL_BATTLE_SHOUT)
+      return
+    end
+  end
+
   local stance = Shalamayne.GetStance()
   local inMelee = Shalamayne.InMeleeRange(L)
   local hpPct = Shalamayne.TargetHealthPct()

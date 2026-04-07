@@ -274,11 +274,11 @@ local frame = CreateFrame("Frame", "Shalamayne_Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_REGEN_DISABLED")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+frame:RegisterEvent("PLAYER_DEAD")
 frame:RegisterEvent("PLAYER_ENTER_COMBAT")
 frame:RegisterEvent("PLAYER_LEAVE_COMBAT")
 frame:RegisterEvent("PLAYER_TARGET_CHANGED")
 frame:RegisterEvent("SPELLS_CHANGED")
-frame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
 frame:RegisterEvent("UNIT_CASTEVENT")
 frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
 frame:RegisterEvent("CHARACTER_POINTS_CHANGED")
@@ -368,7 +368,7 @@ frame:SetScript("OnEvent", function()
     return
   end
 
-  if event == "PLAYER_REGEN_ENABLED" then
+  if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_DEAD" then
     Shalamayne.inCombat = false
     Shalamayne.ResetCombat()
     return
@@ -392,9 +392,6 @@ frame:SetScript("OnEvent", function()
   end
 
   if event == "PLAYER_TARGET_CHANGED" then
-  end
-
-  if event == "UPDATE_SHAPESHIFT_FORM" then
   end
 
   if event == "CHAT_MSG_COMBAT_SELF_MISSES" then
@@ -421,18 +418,36 @@ frame:SetScript("OnEvent", function()
           end
         end
       end
+    elseif string.find(msg, ".*" .. L.SPELL_HEROIC_STRIKE .. ".*") then
+      Shalamayne.queuedHeroicStrike = false
+    elseif string.find(msg, ".*" .. L.SPELL_CLEAVE .. ".*") then
+      Shalamayne.queuedCleave = false
     end
     return
   end
 
   if event == "UNIT_CASTEVENT" then
-    if arg4 == L.SPELL_OVERPOWER then
-      Shalamayne.overpowerUntil = 0
-      Shalamayne.overpowerTargetGuid = nil
-    elseif arg4 == 11597 then
-      local _, guid = UnitExists("target")
-      if guid then
-        Shalamayne.sunderOnceByGuid[guid] = GetTime()
+    if arg1 == PLAYER_GUID and arg3 == "CAST" then
+      -- 压制 (Overpower)
+      if arg4 == 11585 then
+        Shalamayne.overpowerUntil = 0
+        Shalamayne.overpowerTargetGuid = nil
+      -- 破甲攻击 (Sunder Armor)
+      elseif arg4 == 7386 or arg4 == 7405 or arg4 == 8380 or arg4 == 11596 or arg4 == 11597 then
+        local guid = Shalamayne.GetTargetGuid()
+        if guid then
+          Shalamayne.sunderOnceByGuid[guid] = GetTime()
+        end
+      -- 英勇打击 (Heroic Strike)
+      elseif arg4 == 78 or arg4 == 284 or arg4 == 285 or arg4 == 1608 or arg4 == 11564 or arg4 == 11565 or arg4 == 11566 or arg4 == 11567 or arg4 == 25286 then
+        Shalamayne.queuedHeroicStrike = true
+        Shalamayne.queuedHeroicStrikeTime = GetTime()
+        Shalamayne.queuedCleave = false
+      -- 顺劈斩 (Cleave)
+      elseif arg4 == 845 or arg4 == 7369 or arg4 == 11608 or arg4 == 11609 or arg4 == 20569 then
+        Shalamayne.queuedCleave = true
+        Shalamayne.queuedCleaveTime = GetTime()
+        Shalamayne.queuedHeroicStrike = false
       end
     end
     return

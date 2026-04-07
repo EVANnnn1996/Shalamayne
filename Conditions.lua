@@ -641,11 +641,25 @@ function Shalamayne.IsSpellReady(spellName, now)
 end
 
 function Shalamayne.IsSpellQueued(spellName)
-  if GetCurrentCastingInfo then
-    local _, _, _, _, _, onswing = GetCurrentCastingInfo()
-    if onswing == 1 then
-      return true
+  local now = GetTime()
+  local mhSpeed = UnitAttackSpeed("player") or 3.0
+
+  if spellName == L.SPELL_HEROIC_STRIKE then
+    if Shalamayne.queuedHeroicStrike and Shalamayne.queuedHeroicStrikeTime then
+      if (now - Shalamayne.queuedHeroicStrikeTime) > mhSpeed then
+        Shalamayne.queuedHeroicStrike = false
+      end
     end
+    return Shalamayne.queuedHeroicStrike
+  end
+
+  if spellName == L.SPELL_CLEAVE then
+    if Shalamayne.queuedCleave and Shalamayne.queuedCleaveTime then
+      if (now - Shalamayne.queuedCleaveTime) > mhSpeed then
+        Shalamayne.queuedCleave = false
+      end
+    end
+    return Shalamayne.queuedCleave
   end
 
   return false
@@ -676,6 +690,19 @@ end
 
 -- Get Sunder Armor stacks on target (0..5).
 -- In 1.12 UnitDebuff returns texture and stack count; we match by texture.
+function Shalamayne.PlayerHasBuff(textureMatch)
+  local i = 1
+  while true do
+    local texture, _ = UnitBuff("player", i)
+    if not texture then break end
+    if string.find(string.lower(texture), string.lower(textureMatch)) then
+      return true
+    end
+    i = i + 1
+  end
+  return false
+end
+
 function Shalamayne.TargetSunderArmorStacks()
   if not Shalamayne.TargetExists() then return 0 end
   local sid = GetSpellIdFromName("Sunder Armor") or GetSpellIdFromName("破甲攻击")
