@@ -249,7 +249,7 @@ Shalamayne.rangeYards = 8.0
 Shalamayne.maxIterations = 40
 
 -- Returns the GUID of the current target (SuperWoW extends UnitExists to return GUID).
-local function GetTargetGuid()
+function Shalamayne.GetTargetGuid()
   local exists, guid = UnitExists("target")
   if not exists then return nil end
   return guid
@@ -351,7 +351,7 @@ function Shalamayne.CountEnemiesInMelee()
 
   local _, count = ScanGuidsInRange(Shalamayne.rangeYards)
 
-  local originalGuid = GetTargetGuid()
+  local originalGuid = Shalamayne.GetTargetGuid()
   local seen = {}
   local count2 = 0
 
@@ -363,10 +363,10 @@ function Shalamayne.CountEnemiesInMelee()
     return 1
   end
 
-  local firstGuid = GetTargetGuid()
+  local firstGuid = Shalamayne.GetTargetGuid()
 
   for i = 1, Shalamayne.maxIterations do
-    local currentGuid = GetTargetGuid()
+    local currentGuid = Shalamayne.GetTargetGuid()
     if not currentGuid then break end
 
     if i > 1 and firstGuid and currentGuid == firstGuid then
@@ -496,12 +496,12 @@ function Shalamayne.AutoTargetMelee()
     return Shalamayne.TargetExists() 
   end
 
-  local firstGuid = GetTargetGuid()
+  local firstGuid = Shalamayne.GetTargetGuid()
   local skullGuid = nil
   local crossGuid = nil
 
   for i = 1, Shalamayne.maxIterations do
-    local currentGuid = GetTargetGuid()
+    local currentGuid = Shalamayne.GetTargetGuid()
     if not currentGuid then break end
 
     if i > 1 and firstGuid and currentGuid == firstGuid then

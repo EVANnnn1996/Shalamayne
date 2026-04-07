@@ -44,6 +44,7 @@ end
 -- QueueSpellByName (Nampower) provides reliable spell queuing.
 -- If it's not available, fall back to CastSpellByName.
 local function QueueOrCast(spellName)
+  print(spellName)
   if QueueSpellByName then
     QueueSpellByName(spellName)
     return

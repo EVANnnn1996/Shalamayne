@@ -52,6 +52,7 @@ Shalamayne_Localization = {
     SPELL_HEROIC_STRIKE = "Heroic Strike",
     SPELL_SUNDER_ARMOR = "Sunder Armor",
     SPELL_SLAM = "Slam",
+    SPELL_BATTLE_SHOUT = "Battle Shout",
 
     COMBATLOG_ENEMY_DODGE_PATTERNS = {
       "was dodged by",
@@ -127,6 +128,7 @@ Shalamayne_Localization = {
     SPELL_HEROIC_STRIKE = "英勇打击",
     SPELL_SUNDER_ARMOR = "破甲攻击",
     SPELL_SLAM = "猛击",
+    SPELL_BATTLE_SHOUT = "战斗怒吼",
 
     COMBATLOG_ENEMY_DODGE_PATTERNS = {
       "躲闪了",

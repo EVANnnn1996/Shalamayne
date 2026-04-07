@@ -436,28 +436,26 @@ frame:SetScript("OnEvent", function()
   end
 
   if event == "UNIT_CASTEVENT" then
-    if arg1 == PLAYER_GUID and arg3 == "CAST" then
-      -- 压制 (Overpower)
-      if arg4 == 11585 then
-        Shalamayne.overpowerUntil = 0
-        Shalamayne.overpowerTargetGuid = nil
-      -- 破甲攻击 (Sunder Armor)
-      elseif arg4 == 7386 or arg4 == 7405 or arg4 == 8380 or arg4 == 11596 or arg4 == 11597 then
-        local guid = Shalamayne.GetTargetGuid()
-        if guid then
-          Shalamayne.sunderOnceByGuid[guid] = GetTime()
-        end
-      -- 英勇打击 (Heroic Strike)
-      elseif arg4 == 78 or arg4 == 284 or arg4 == 285 or arg4 == 1608 or arg4 == 11564 or arg4 == 11565 or arg4 == 11566 or arg4 == 11567 or arg4 == 25286 then
-        Shalamayne.queuedHeroicStrike = true
-        Shalamayne.queuedHeroicStrikeTime = GetTime()
-        Shalamayne.queuedCleave = false
-      -- 顺劈斩 (Cleave)
-      elseif arg4 == 845 or arg4 == 7369 or arg4 == 11608 or arg4 == 11609 or arg4 == 20569 then
-        Shalamayne.queuedCleave = true
-        Shalamayne.queuedCleaveTime = GetTime()
-        Shalamayne.queuedHeroicStrike = false
+    -- 压制 (Overpower)
+    if arg4 == 11585 then
+      Shalamayne.overpowerUntil = 0
+      Shalamayne.overpowerTargetGuid = nil
+    -- 破甲攻击 (Sunder Armor)
+    elseif arg4 == 7386 or arg4 == 7405 or arg4 == 8380 or arg4 == 11596 or arg4 == 11597 then
+      local guid = Shalamayne.GetTargetGuid()
+      if guid then
+        Shalamayne.sunderOnceByGuid[guid] = GetTime()
       end
+    -- 英勇打击 (Heroic Strike)
+    elseif arg4 == 78 or arg4 == 284 or arg4 == 285 or arg4 == 1608 or arg4 == 11564 or arg4 == 11565 or arg4 == 11566 or arg4 == 11567 or arg4 == 25286 then
+      Shalamayne.queuedHeroicStrike = true
+      Shalamayne.queuedHeroicStrikeTime = GetTime()
+      Shalamayne.queuedCleave = false
+    -- 顺劈斩 (Cleave)
+    elseif arg4 == 845 or arg4 == 7369 or arg4 == 11608 or arg4 == 11609 or arg4 == 20569 then
+      Shalamayne.queuedCleave = true
+      Shalamayne.queuedCleaveTime = GetTime()
+      Shalamayne.queuedHeroicStrike = false
     end
     return
   end
