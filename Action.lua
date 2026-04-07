@@ -76,12 +76,10 @@ function Shalamayne.DecideArms(L, now)
     AttackTarget()
   end
 
-  if Shalamayne.inCombat and Shalamayne.IsSpellReady(L.SPELL_BATTLE_SHOUT, now) and not Shalamayne.PlayerHasBuff("ability_warrior_battleshout") then
-    if rage >= 10 then
-      DebugHit("battle_shout", L.SPELL_BATTLE_SHOUT, now)
-      QueueOrCast(L.SPELL_BATTLE_SHOUT)
-      return
-    end
+  if not Shalamayne.PlayerHasBuff("ability_warrior_battleshout") and rage >= 10 then
+    DebugHit("battle_shout", L.SPELL_BATTLE_SHOUT, now)
+    QueueOrCast(L.SPELL_BATTLE_SHOUT)
+    return
   end
 
   local hasOp = Shalamayne.HasOverpowerWindow(now)
@@ -289,12 +287,10 @@ function Shalamayne.DecideFury(L, now)
 
   local rage = Shalamayne.PlayerRage()
 
-  if Shalamayne.inCombat and Shalamayne.IsSpellReady(L.SPELL_BATTLE_SHOUT, now) and not Shalamayne.PlayerHasBuff("ability_warrior_battleshout") then
-    if rage >= 10 then
-      DebugHit("battle_shout", L.SPELL_BATTLE_SHOUT, now)
-      QueueOrCast(L.SPELL_BATTLE_SHOUT)
-      return
-    end
+  if not Shalamayne.PlayerHasBuff("ability_warrior_battleshout") and rage >= 10 then
+    DebugHit("battle_shout", L.SPELL_BATTLE_SHOUT, now)
+    QueueOrCast(L.SPELL_BATTLE_SHOUT)
+    return
   end
 
   local stance = Shalamayne.GetStance()
