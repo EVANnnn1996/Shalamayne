@@ -76,7 +76,7 @@ function Shalamayne.DecideArms(L, now)
     AttackTarget()
   end
 
-  if not Shalamayne.PlayerHasBuff("ability_warrior_battleshout") and rage >= 10 then
+  if Shalamayne.inCombat and not Shalamayne.PlayerHasBuff("ability_warrior_battleshout") and rage >= 10 then
     DebugHit("battle_shout", L.SPELL_BATTLE_SHOUT, now)
     QueueOrCast(L.SPELL_BATTLE_SHOUT)
     return
@@ -287,7 +287,7 @@ function Shalamayne.DecideFury(L, now)
 
   local rage = Shalamayne.PlayerRage()
 
-  if not Shalamayne.PlayerHasBuff("ability_warrior_battleshout") and rage >= 10 then
+  if Shalamayne.inCombat andnot Shalamayne.PlayerHasBuff("ability_warrior_battleshout") and rage >= 10 then
     DebugHit("battle_shout", L.SPELL_BATTLE_SHOUT, now)
     QueueOrCast(L.SPELL_BATTLE_SHOUT)
     return
