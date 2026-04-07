@@ -133,7 +133,7 @@ function Shalamayne.DecideArms(L, now)
     end
 
     if inMelee and hpAbs > sunderHp and Shalamayne.TargetSunderArmorStacks() < 5 and Shalamayne.IsSpellReady(L.SPELL_SUNDER_ARMOR, now) then
-      local _, guid = UnitExists("target")
+      local guid = Shalamayne.GetTargetGuid()
       if not (guid and Shalamayne.sunderOnceByGuid and Shalamayne.sunderOnceByGuid[guid]) then
         DebugHit("sunder_once", L.SPELL_SUNDER_ARMOR, now)
         QueueOrCast(L.SPELL_SUNDER_ARMOR)
@@ -186,7 +186,7 @@ function Shalamayne.DecideArms(L, now)
     end
 
     if inMelee and hpAbs > sunderHp and Shalamayne.TargetSunderArmorStacks() < 5 and Shalamayne.IsSpellReady(L.SPELL_SUNDER_ARMOR, now) then
-      local _, guid = UnitExists("target")
+      local guid = Shalamayne.GetTargetGuid()
       if not (guid and Shalamayne.sunderOnceByGuid and Shalamayne.sunderOnceByGuid[guid]) then
         DebugHit("sunder_once", L.SPELL_SUNDER_ARMOR, now)
         QueueOrCast(L.SPELL_SUNDER_ARMOR)
@@ -291,7 +291,7 @@ function Shalamayne.DecideFury(L, now)
 
   local function DoAOE()
     if inMelee and hpAbs > sunderHp and Shalamayne.TargetSunderArmorStacks() < 5 and Shalamayne.IsSpellReady(L.SPELL_SUNDER_ARMOR, now) then
-      local _, guid = UnitExists("target")
+      local guid = Shalamayne.GetTargetGuid()
       if not (guid and Shalamayne.sunderOnceByGuid and Shalamayne.sunderOnceByGuid[guid]) then
         DebugHit("sunder_once", L.SPELL_SUNDER_ARMOR, now)
         QueueOrCast(L.SPELL_SUNDER_ARMOR)
@@ -341,7 +341,7 @@ function Shalamayne.DecideFury(L, now)
     end
 
     if inMelee and hpAbs > sunderHp and Shalamayne.TargetSunderArmorStacks() < 5 and Shalamayne.IsSpellReady(L.SPELL_SUNDER_ARMOR, now) then
-      local _, guid = UnitExists("target")
+      local guid = Shalamayne.GetTargetGuid()
       if not (guid and Shalamayne.sunderOnceByGuid and Shalamayne.sunderOnceByGuid[guid]) then
         DebugHit("sunder_once", L.SPELL_SUNDER_ARMOR, now)
         QueueOrCast(L.SPELL_SUNDER_ARMOR)
