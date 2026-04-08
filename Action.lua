@@ -44,7 +44,6 @@ end
 -- QueueSpellByName (Nampower) provides reliable spell queuing.
 -- If it's not available, fall back to CastSpellByName.
 local function QueueOrCast(spellName)
-  print(spellName)
   if QueueSpellByName then
     QueueSpellByName(spellName)
     return
@@ -87,6 +86,7 @@ function Shalamayne.DecideArms(L, now)
   local finisherHp = Shalamayne.finisherExecuteHp or 50000
   local slamThreshold = Shalamayne.slamSwingThreshold or 0.5
   local hasOp = Shalamayne.HasOverpowerWindow(now)
+  local mhRem = Shalamayne.MainhandSwingRemaining()
 
   StartAttack()
 
@@ -95,7 +95,7 @@ function Shalamayne.DecideArms(L, now)
     return
   end
 
-  if stance ~= 3 and rage < 50 and not ((hasOp and Shalamayne.IsSpellReady(L.SPELL_OVERPOWER, now)) or (enemyCount >= 2 and Shalamayne.IsSpellReady(L.SPELL_SWEEPING_STRIKES, now))) then
+  if stance ~= 3 and rage <= 25 and not ((hasOp and Shalamayne.IsSpellReady(L.SPELL_OVERPOWER, now)) or (enemyCount >= 2 and Shalamayne.IsSpellReady(L.SPELL_SWEEPING_STRIKES, now))) then
     DebugHit("stance_berseker_default", L.SPELL_BERSERKER_STANCE, now)
     QueueOrCast(L.SPELL_BERSERKER_STANCE)
     return
@@ -199,33 +199,34 @@ function Shalamayne.DecideArms(L, now)
   end
 
   local function DoSingle()
-    if inMelee and rage >= Shalamayne.costExecute and hpPct <= 20 and hpAbs <= finisherHp then
+    if inMelee and rage >= Shalamayne.costExecute and hpPct <= 20 and hpAbs <= finisherHp then -- 抢斩杀，避免带着怒气离开战斗
       DebugHit("finisher_execute", L.SPELL_EXECUTE, now)
+      SpellStopCasting()
       QueueOrCast(L.SPELL_EXECUTE)
       return
     end
 
-    if inMelee and hasOp then
-      if stance ~= 1 and rage < 40 then
+    if inMelee and rage >= Shalamayne.costOverpower and hasOp and Shalamayne.IsSpellReady(L.SPELL_OVERPOWER, now) then
+      if stance ~= 1 and rage <= 40 then -- 压制期望伤害与旋风斩接近，限制最多消耗5+15怒气
         DebugHit("stance_for_overpower", L.SPELL_BATTLE_STANCE, now)
         QueueOrCast(L.SPELL_BATTLE_STANCE)
         return
       end
-      if stance == 1 and Shalamayne.IsSpellReady(L.SPELL_OVERPOWER, now) then
+      if stance == 1 then
         DebugHit("overpower", L.SPELL_OVERPOWER, now)
         QueueOrCast(L.SPELL_OVERPOWER)
         return
       end
     end
 
-    if Shalamayne.IsSpellReady(L.SPELL_MORTAL_STRIKE, now) then
+    if inMelee and rage >= Shalamayne.costMortalStrike and Shalamayne.IsSpellReady(L.SPELL_MORTAL_STRIKE, now) then
       DebugHit("mortal_strike", L.SPELL_MORTAL_STRIKE, now)
       QueueOrCast(L.SPELL_MORTAL_STRIKE)
       return
     end
 
-    if Shalamayne.IsSpellReady(L.SPELL_WHIRLWIND, now) then
-      if stance ~= 3 and rage < 50 then
+    if inMelee and rage >= Shalamayne.costWhirlwind and Shalamayne.IsSpellReady(L.SPELL_WHIRLWIND, now) then
+      if stance ~= 3 and rage <= 40 then
         DebugHit("stance_for_whirlwind", L.SPELL_BERSERKER_STANCE, now)
         QueueOrCast(L.SPELL_BERSERKER_STANCE)
         return
@@ -237,25 +238,23 @@ function Shalamayne.DecideArms(L, now)
       end
     end
 
-    if inMelee and hpPct > 0 and hpPct < 20 and Shalamayne.IsSpellReady(L.SPELL_EXECUTE, now) then
+    if inMelee and rage >= Shalamayne.costExecute and hpPct <= 20 and st_timer < 1.5 then -- 斩杀期只在平砍后半段斩杀，避免没怒气发呆
       DebugHit("execute", L.SPELL_EXECUTE, now)
       QueueOrCast(L.SPELL_EXECUTE)
       return
     end
 
-    if inMelee and rage > 60 and Shalamayne.IsSpellReady(L.SPELL_HEROIC_STRIKE, now) and not Shalamayne.IsSpellQueued(L.SPELL_HEROIC_STRIKE) then
+    local heroicStrikeThreshold = Shalamayne.costMortalStrike + Shalamayne.costWhirlwind + Shalamayne.costSlam + Shalamayne.costHeroicStrike
+    if inMelee and rage >= heroicStrikeThreshold and hpPct > 20 and not Shalamayne.IsSpellQueued(L.SPELL_HEROIC_STRIKE) then
       DebugHit("heroic_strike", L.SPELL_HEROIC_STRIKE, now)
       QueueOrCast(L.SPELL_HEROIC_STRIKE)
       return
     end
 
-    if inMelee and Shalamayne.IsSpellReady(L.SPELL_SLAM, now) then
-      local mhRem = Shalamayne.MainhandSwingRemaining()
-      if mhRem >= slamThreshold then
-        DebugHit("slam", L.SPELL_SLAM, now)
-        QueueOrCast(L.SPELL_SLAM)
-        return
-      end
+    if inMelee and ((rage>=15 and mhRem >= slamThreshold) or (rage >= 50 and mhRem >= slamThreshold)) then
+      DebugHit("slam", L.SPELL_SLAM, now)
+      QueueOrCast(L.SPELL_SLAM)
+      return
     end
 
     DebugHit("no_action", nil, now)

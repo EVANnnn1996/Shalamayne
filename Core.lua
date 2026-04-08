@@ -299,7 +299,7 @@ local function OnCombatLog(L, msg)
   if not patterns then return end
   for _, p in ipairs(patterns) do
     if string.find(msg, p) then
-      local window = 4.0
+      local window = 4.5
       local _, guid = UnitExists("target")
       Shalamayne.overpowerUntil = GetTime() + window
       Shalamayne.overpowerTargetGuid = guid
