@@ -26,9 +26,12 @@ end
 Shalamayne.costSunderArmor = 10
 Shalamayne.costWhirlwind = 25
 Shalamayne.costHeroicStrike = 15
-Shalamayne.costCleave = 15
+Shalamayne.costCleave = 20
 Shalamayne.costExecute = 15
 Shalamayne.costSweepingStrikes = 20
+Shalamayne.costOverpower = 5
+Shalamayne.costSlam = 15
+Shalamayne.costMortalStrike = 30
 
 local function StartAttack()
   if not UnitExists("target") or UnitIsDeadOrGhost("target") or not UnitCanAttack("player", "target") then
@@ -111,7 +114,7 @@ function Shalamayne.DecideArms(L, now)
   end
 
   local function DoAOE()
-    if range >= Shalamayne.costSweepingStrikes and Shalamayne.IsSpellReady(L.SPELL_SWEEPING_STRIKES, now) then
+    if rage >= Shalamayne.costSweepingStrikes and Shalamayne.IsSpellReady(L.SPELL_SWEEPING_STRIKES, now) then
       if stance ~= 1 and rage < 50 then
         DebugHit("stance_for_sweeping", L.SPELL_BATTLE_STANCE, now)
         QueueOrCast(L.SPELL_BATTLE_STANCE)
