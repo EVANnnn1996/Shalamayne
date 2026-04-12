@@ -278,6 +278,7 @@ frame:RegisterEvent("PLAYER_DEAD")
 frame:RegisterEvent("PLAYER_ENTER_COMBAT")
 frame:RegisterEvent("PLAYER_LEAVE_COMBAT")
 frame:RegisterEvent("PLAYER_TARGET_CHANGED")
+frame:RegisterEvent("ACTIONBAR_SLOT_CHANGED")
 frame:RegisterEvent("SPELLS_CHANGED")
 frame:RegisterEvent("UNIT_CASTEVENT")
 frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
@@ -370,6 +371,13 @@ frame:SetScript("OnEvent", function()
 
   if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_DEAD" then
     Shalamayne.ResetCombat()
+    return
+  end
+
+  if event == "ACTIONBAR_SLOT_CHANGED" then
+    if Shalamayne.ActionSlotCache then
+      Shalamayne.ActionSlotCache = {}
+    end
     return
   end
 

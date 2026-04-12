@@ -661,6 +661,38 @@ function Shalamayne.IsSpellReady(spellName, now)
 end
 
 function Shalamayne.IsSpellQueued(spellName)
+  if Shalamayne.ActionSlotCache == nil then
+    Shalamayne.ActionSlotCache = {}
+  end
+  
+  local cachedSlot = Shalamayne.ActionSlotCache[spellName]
+  if cachedSlot then
+    if cachedSlot > 0 then
+      return IsCurrentAction(cachedSlot) == 1
+    end
+  else
+    -- Scan action bars once to cache the slot
+    for i = 1, 120 do
+      if HasAction(i) then
+        Shalamayne.ActionTooltip = Shalamayne.ActionTooltip or CreateFrame("GameTooltip", "ShalamayneActionTooltip", nil, "GameTooltipTemplate")
+        Shalamayne.ActionTooltip:SetOwner(WorldFrame, "ANCHOR_NONE")
+        Shalamayne.ActionTooltip:SetAction(i)
+        local textObj = getglobal("ShalamayneActionTooltipTextLeft1")
+        if textObj then
+          local actionName = textObj:GetText()
+          if actionName == spellName then
+            Shalamayne.ActionSlotCache[spellName] = i
+            print(i)
+            return IsCurrentAction(i) == 1
+          end
+        end
+      end
+    end
+    -- Cache a dummy value (-1) to prevent repeated scanning if spell is not on action bar
+    Shalamayne.ActionSlotCache[spellName] = -1
+  end
+
+  -- Fallback to manual timers if not found on action bars
   local now = GetTime()
   local mhSpeed = UnitAttackSpeed("player") or 3.0
 
